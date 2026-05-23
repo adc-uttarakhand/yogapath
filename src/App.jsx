@@ -389,8 +389,14 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
 
 // ─── SUPABASE LOGGER ──────────────────────────────────────
 async function logToSupabase(d) {
-  if(!SUPABASE_URL.includes(".supabase.co")) return;
-  try { await fetch(`${SUPABASE_URL}/rest/v1/yoga_participation`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=minimal"},body:JSON.stringify(d)}); } catch{}
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/yoga_participation`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=minimal"},
+      body:JSON.stringify(d)
+    });
+    return res.ok;
+  } catch(e) { console.error('Supabase insert failed:',e); return false; }
 }
 
 // ─── CSS ─────────────────────────────────────────────────
@@ -512,16 +518,7 @@ function BgSwatch({ style, selected, onClick }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────
-const MOCK_COMM=[
-  {id:1,name:"Dr. Rajesh Kumar",district:"Dehradun",role:"DM (District Magistrate)",mode:"message",asana:null,date:"2026-06-15"},
-  {id:2,name:"Priya Sharma",district:"Haridwar",role:"AYUSH Doctor",mode:"yoga_video",asana:"Vrikshasana",date:"2026-06-14"},
-  {id:3,name:"Gram Pradhan Rajwant",district:"Almora",role:"Gram Pradhan",mode:"message",asana:null,date:"2026-06-14"},
-  {id:4,name:"Sunita Rawat",district:"Nainital",role:"Doctor — Ayushman Arogya Mandir",mode:"photo",asana:"Padmasana",date:"2026-06-13"},
-  {id:5,name:"Anita Bisht",district:"Pithoragarh",role:"Yoga Instructor / Wellness Coach",mode:"yoga_video",asana:"Surya Namaskar",date:"2026-06-12"},
-  {id:6,name:"Deepak Joshi",district:"Chamoli",role:"AYUSH Pharmacist",mode:"photo",asana:"Vajrasana",date:"2026-06-12"},
-  {id:7,name:"MLA Mohan Negi",district:"Tehri Garhwal",role:"MLA (विधायक)",mode:"message",asana:null,date:"2026-06-11"},
-  {id:8,name:"Kavita Pant",district:"Uttarkashi",role:"General Public (आम नागरिक)",mode:"photo",asana:"Tadasana",date:"2026-06-10"},
-];
+// No mock data — all data from Supabase
 const AV_COLORS=["#E8622A","#10A87C","#8B5CF6","#EC4899","#F59E0B","#0EA5E9","#A78BFA","#14B8A6"];
 
 export default function App() {
@@ -533,8 +530,9 @@ export default function App() {
   const [cat,setCat]=useState("All");
   const [captured,setCaptured]=useState(null);
   const [msg]=useState(randQuote);
-  const [community,setCommunity]=useState(MOCK_COMM);
+  const [community,setCommunity]=useState([]);
   const [distStats,setDistStats]=useState({});
+  const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
   const [showRoleDD,setShowRoleDD]=useState(false);
   const [installPrompt,setInstallPrompt]=useState(null);
@@ -557,18 +555,34 @@ export default function App() {
     else if(isIOS){ setShowIOSHint(true); }
   }
 
-  useEffect(()=>{(async()=>{try{const r=await window.storage.get("yoga-v5");if(r?.value) setCommunity(JSON.parse(r.value));const d=await window.storage.get("yogadist-v5");if(d?.value) setDistStats(JSON.parse(d.value));}catch{}})();},[]);
+  async function loadCommunity() {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=100`,
+        { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`} }
+      );
+      if(res.ok) {
+        const data = await res.json();
+        setCommunity(data);
+        // Build distStats from fetched data
+        const dc={};
+        data.forEach(e=>{ if(e.district) dc[e.district]=(dc[e.district]||0)+1; });
+        setDistStats(dc);
+      }
+    } catch(e) { console.error('Supabase fetch failed:',e); }
+    setLoading(false);
+  }
+
+  useEffect(()=>{ loadCommunity(); },[]);
 
   function download(){if(!captured) return;const a=document.createElement("a");a.href=captured.url;a.download=captured.type==="photo"?`yoga-frame-${Date.now()}.jpg`:`yoga-video-${Date.now()}.webm`;a.click();}
   function shareWA(){const who=role?`${name} (${role})`:name;const what=mode==="message"?"Yoga Message":`${asana?.name}`;const t=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n"${msg}"\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,"_blank");}
   async function joinWall(){
-    const entry={id:Date.now(),name,district,role,mode,asana:asana?.name,date:new Date().toISOString().split("T")[0]};
-    const updated=[entry,...community].slice(0,100);
-    setCommunity(updated);
-    const nd={...distStats,[district]:(distStats[district]||0)+1};
-    setDistStats(nd); setJoined(true);
-    try{const p=updated.filter(c=>!MOCK_COMM.find(m=>m.id===c.id));await window.storage.set("yoga-v5",JSON.stringify(p.slice(0,60)));await window.storage.set("yogadist-v5",JSON.stringify(nd));}catch{}
-    logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
+    const ok = await logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
+    setJoined(true);
+    if(ok) { await loadCommunity(); }
+    else { const upd=[{id:Date.now(),name,district,role,mode,asana:asana?.name,date:new Date().toISOString().split("T")[0]},...community]; setCommunity(upd); }
     setScreen("community");
   }
 
@@ -586,7 +600,7 @@ export default function App() {
           <div style={{background:"linear-gradient(135deg,#080F08,#0A160A)",padding:"36px 24px 24px",borderBottom:"1px solid #0D1A0D",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:"-40px",right:"-40px",width:"180px",height:"180px",borderRadius:"50%",background:"radial-gradient(circle,rgba(232,98,42,0.1),transparent)",filter:"blur(30px)"}}/>
             <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
-              <div style={{fontSize:"44px",filter:"drop-shadow(0 0 16px rgba(232,98,42,0.5))"}} >🕉️</div>
+              <div style={{fontSize:"44px",filter:"drop-shadow(0 0 16px rgba(232,98,42,0.5))"}}>🧘</div>
               <div>
                 <div style={{fontSize:"26px",fontWeight:"800",letterSpacing:"-0.5px",lineHeight:1.1}}>YogaPath</div>
                 <div style={{background:"linear-gradient(135deg,#E8622A,#F59E0B)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",fontSize:"18px",fontWeight:"700",letterSpacing:"0.5px"}}>Uttarakhand</div>
@@ -880,8 +894,8 @@ export default function App() {
 
       {/* ── COMMUNITY WALL ── */}
       {screen==="community"&&(()=>{
-        const dc={};community.forEach(c=>{if(c.district) dc[c.district]=(dc[c.district]||0)+1;});
-        Object.entries(distStats).forEach(([d,v])=>{dc[d]=Math.max(dc[d]||0,v);});
+        const dc={...distStats};
+        community.forEach(c=>{if(c.district) dc[c.district]=(dc[c.district]||0)+1;});
         const sorted=Object.entries(dc).sort((a,b)=>b[1]-a[1]);
         const mc={photo:0,yoga_video:0,message:0};community.forEach(c=>{if(c.mode) mc[c.mode]=(mc[c.mode]||0)+1;});
         return(
@@ -913,7 +927,12 @@ export default function App() {
                   </div>
                 );})}
               </div>
-              <div style={{color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"10px"}}>Recent Entries</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}}>
+                <div style={{color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase"}}>Recent Entries</div>
+                <button onClick={loadCommunity} style={{background:"transparent",border:"1px solid #0D1A0D",color:"#1A5A1A",borderRadius:"8px",padding:"4px 10px",fontSize:"11px",cursor:"pointer"}}>↻ Refresh</button>
+              </div>
+              {loading&&<div style={{textAlign:"center",padding:"32px",color:"#1A4A1A"}}><div style={{fontSize:"28px",marginBottom:"8px"}}>⏳</div><div style={{fontSize:"13px"}}>Loading...</div></div>}
+              {!loading&&community.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:"#1A3A1A"}}><div style={{fontSize:"36px",marginBottom:"12px"}}>🧘</div><div style={{fontWeight:"600",fontSize:"15px",marginBottom:"6px"}}>अभी कोई entry नहीं</div><div style={{fontSize:"13px"}}>पहले Yoga Frame बनाएं और District Wall join करें</div></div>}
               {community.slice(0,20).map((entry,i)=>{
                 const isMe=entry.name===name&&entry.district===district;
                 const mO=MODES.find(m=>m.id===entry.mode);
