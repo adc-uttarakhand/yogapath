@@ -537,6 +537,25 @@ export default function App() {
   const [distStats,setDistStats]=useState({});
   const [joined,setJoined]=useState(false);
   const [showRoleDD,setShowRoleDD]=useState(false);
+  const [installPrompt,setInstallPrompt]=useState(null);
+  const [isInstalled,setIsInstalled]=useState(false);
+  const [isIOS,setIsIOS]=useState(false);
+  const [showIOSHint,setShowIOSHint]=useState(false);
+
+  // PWA Install
+  useEffect(()=>{
+    const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+    setIsIOS(iOS);
+    if(window.matchMedia('(display-mode: standalone)').matches) { setIsInstalled(true); return; }
+    const handler=(e)=>{ e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return ()=>window.removeEventListener('beforeinstallprompt', handler);
+  },[]);
+
+  async function handleInstall(){
+    if(installPrompt){ installPrompt.prompt(); const{outcome}=await installPrompt.userChoice; if(outcome==='accepted'){setIsInstalled(true);setInstallPrompt(null);} }
+    else if(isIOS){ setShowIOSHint(true); }
+  }
 
   useEffect(()=>{(async()=>{try{const r=await window.storage.get("yoga-v5");if(r?.value) setCommunity(JSON.parse(r.value));const d=await window.storage.get("yogadist-v5");if(d?.value) setDistStats(JSON.parse(d.value));}catch{}})();},[]);
 
@@ -641,8 +660,41 @@ export default function App() {
             </div>
           </div>
 
+          {/* Install App Banner */}
+          {!isInstalled&&(
+            <div style={{padding:"16px 18px 0"}}>
+              <div className="tap" onClick={handleInstall} style={{background:"linear-gradient(135deg,rgba(16,168,124,0.1),rgba(16,168,124,0.06))",border:"1.5px solid rgba(16,168,124,0.3)",borderRadius:"16px",padding:"16px",display:"flex",alignItems:"center",gap:"14px",cursor:"pointer"}}>
+                <div style={{width:"44px",height:"44px",borderRadius:"12px",background:"rgba(16,168,124,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",flexShrink:0}}>📲</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:"700",fontSize:"15px",color:"#10A87C"}}>App Install करें</div>
+                  <div style={{color:"#1A5A1A",fontSize:"12px",marginTop:"2px"}}>{isIOS?"Safari → Share → Add to Home Screen":"Home Screen पर install करें — offline भी चलेगा"}</div>
+                </div>
+                <div style={{color:"#10A87C",fontSize:"20px",flexShrink:0}}>→</div>
+              </div>
+              {showIOSHint&&(
+                <div style={{background:"#0A150A",border:"1px solid #10A87C",borderRadius:"12px",padding:"14px",marginTop:"10px",position:"relative"}}>
+                  <button onClick={()=>setShowIOSHint(false)} style={{position:"absolute",top:"8px",right:"10px",background:"none",border:"none",color:"#2A5A2A",fontSize:"18px",cursor:"pointer"}}>✕</button>
+                  <div style={{fontWeight:"700",fontSize:"13px",color:"#10A87C",marginBottom:"10px"}}>iPhone/iPad पर Install कैसे करें:</div>
+                  <div style={{color:"#2A6A2A",fontSize:"13px",lineHeight:1.8}}>
+                    <div>1️⃣  नीचे <strong style={{color:"#10A87C"}}>Share</strong> button (□↑) दबाएं</div>
+                    <div>2️⃣  <strong style={{color:"#10A87C"}}>"Add to Home Screen"</strong> चुनें</div>
+                    <div>3️⃣  <strong style={{color:"#10A87C"}}>"Add"</strong> tap करें — Done! 🎉</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {isInstalled&&(
+            <div style={{padding:"16px 18px 0"}}>
+              <div style={{background:"rgba(16,168,124,0.06)",border:"1px solid rgba(16,168,124,0.15)",borderRadius:"12px",padding:"12px 16px",display:"flex",alignItems:"center",gap:"10px"}}>
+                <span style={{fontSize:"18px"}}>✅</span>
+                <span style={{color:"#1A5A1A",fontSize:"12px"}}>App installed है — offline भी काम करेगा</span>
+              </div>
+            </div>
+          )}
+
           {/* Footer */}
-          <div style={{padding:"24px 24px 0",textAlign:"center"}}>
+          <div style={{padding:"20px 24px 0",textAlign:"center"}}>
             <div style={{color:"#0F1F0F",fontSize:"11px"}}>Dept. of Ayurvedic & Unani Services  ·  National AYUSH Mission, Uttarakhand</div>
           </div>
         </div>
