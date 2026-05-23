@@ -297,8 +297,6 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
     ctx.fillText("AYUSH UTTARAKHAND",W/2,Math.round(44*fs+4));
     ctx.font=`${Math.round(17*fs)}px Arial,sans-serif`; ctx.fillStyle="rgba(255,255,255,0.78)";
     ctx.fillText("International Day of Yoga 2026  •  21 June",W/2,Math.round(72*fs+4));
-    ctx.font=`bold ${Math.round(14*fs)}px Arial,sans-serif`; ctx.fillStyle=isAipan?"rgba(255,230,150,0.75)":"rgba(255,200,80,0.6)";
-    ctx.fillText("Yoga @ 100 Uttarakhand",W/2,Math.round(94*fs+4));
 
     // Footer panel
     const FY=H-FOOTER;
@@ -311,7 +309,7 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
     fy+=Math.round(26*fs); ctx.font=`${Math.round(17*fs)}px Arial,sans-serif`; ctx.fillStyle=textMuted;
     ctx.fillText(`📍 ${district||"Uttarakhand"}`,42,fy);
     fy+=Math.round(32*fs);
-    if(mode==="message"){ctx.font=`bold ${Math.round(20*fs)}px Arial,sans-serif`;ctx.fillStyle="#A78BFA";ctx.fillText("💬  Yoga Message  ·  IDY 2026",42,fy);fy+=Math.round(28*fs);}
+    if(mode==="message"){ctx.font=`bold ${Math.round(30*fs)}px Arial,sans-serif`;ctx.fillStyle="#A78BFA";ctx.fillText("💬  Yoga Message",42,fy);fy+=Math.round(36*fs);ctx.font=`${Math.round(20*fs)}px Arial,sans-serif`;ctx.fillStyle="rgba(167,139,250,0.7)";ctx.fillText("International Day of Yoga 2026",42,fy);fy+=Math.round(28*fs);}
     else if(asana){ctx.font=`bold ${Math.round(20*fs)}px Arial,sans-serif`;ctx.fillStyle=accent;ctx.fillText(`${asana.icon}  ${asana.name}  |  ${asana.sanskrit}`,42,fy);fy+=Math.round(26*fs);
       ctx.font=`${Math.round(17*fs)}px Arial,sans-serif`;ctx.fillStyle=textMuted;
       (asana.benefits||[]).slice(0,2).forEach(b=>{ctx.fillText(`✓  ${b}`,42,fy);fy+=Math.round(23*fs);});}
@@ -354,7 +352,7 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
     ctx.font=`bold ${Math.round(26*fs)}px Arial,sans-serif`; ctx.fillStyle=textBase;
     ctx.fillText("AYUSH UTTARAKHAND",W/2,Math.round(44*fs));
     ctx.font=`${Math.round(15*fs)}px Arial,sans-serif`; ctx.fillStyle="rgba(255,255,255,0.75)";
-    ctx.fillText("International Day of Yoga 2026  •  21 June  •  Yoga @ 100 Uttarakhand",W/2,Math.round(68*fs));
+    ctx.fillText("International Day of Yoga 2026  •  21 June 2026",W/2,Math.round(68*fs));
 
     // Info right panel
     ctx.fillStyle=panelBg+"CC"; ctx.fillRect(PHOTO_W,BODY_Y,W-PHOTO_W,BODY_H);
@@ -367,7 +365,7 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
     ctx.fillText(`📍 ${district||"Uttarakhand"}`,INFO_X,iy);
     iy+=Math.round(28*fs); ctx.fillStyle=isAipan?"rgba(200,180,180,0.5)":"rgba(100,150,100,0.25)";
     ctx.fillRect(INFO_X,iy,INFO_W-20,1); iy+=Math.round(18*fs);
-    if(mode==="message"){ctx.font=`bold ${Math.round(18*fs)}px Arial,sans-serif`;ctx.fillStyle="#A78BFA";ctx.fillText("💬  Yoga Message",INFO_X,iy);iy+=Math.round(24*fs);}
+    if(mode==="message"){ctx.font=`bold ${Math.round(24*fs)}px Arial,sans-serif`;ctx.fillStyle="#A78BFA";ctx.fillText("💬  Yoga Message",INFO_X,iy);iy+=Math.round(30*fs);ctx.font=`${Math.round(15*fs)}px Arial,sans-serif`;ctx.fillStyle="rgba(167,139,250,0.65)";ctx.fillText("International Day of Yoga 2026",INFO_X,iy);iy+=Math.round(22*fs);}
     else if(asana){ctx.font=`bold ${Math.round(19*fs)}px Arial,sans-serif`;ctx.fillStyle=accent;ctx.fillText(`${asana.icon}  ${asana.name}`,INFO_X,iy);iy+=Math.round(19*fs);
       ctx.font=`${Math.round(15*fs)}px Arial,sans-serif`;ctx.fillStyle=textMuted;ctx.fillText(asana.sanskrit,INFO_X,iy);iy+=Math.round(22*fs);
       ctx.font=`${Math.round(14*fs)}px Arial,sans-serif`;ctx.fillStyle=textMuted;
@@ -527,7 +525,7 @@ const MOCK_COMM=[
 const AV_COLORS=["#E8622A","#10A87C","#8B5CF6","#EC4899","#F59E0B","#0EA5E9","#A78BFA","#14B8A6"];
 
 export default function App() {
-  const [screen,setScreen]=useState("splash");
+  const [screen,setScreen]=useState("home");
   const [name,setName]=useState(""); const [district,setDistrict]=useState(""); const [role,setRole]=useState("");
   const [mode,setMode]=useState(null); const [asana,setAsana]=useState(null);
   const [orientation,setOrientation]=useState("portrait");
@@ -562,32 +560,90 @@ export default function App() {
     <>
       <style>{css}</style>
 
-      {/* ── SPLASH ── */}
-      {screen==="splash"&&(
-        <div className="page fade" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"28px 24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:"5%",left:"8%",width:"280px",height:"280px",borderRadius:"50%",background:"radial-gradient(circle,rgba(232,98,42,0.09),transparent)",filter:"blur(50px)",pointerEvents:"none"}}/>
-          <div style={{position:"absolute",bottom:"10%",right:"5%",width:"240px",height:"240px",borderRadius:"50%",background:"radial-gradient(circle,rgba(16,168,124,0.08),transparent)",filter:"blur(50px)",pointerEvents:"none"}}/>
-          <div style={{position:"relative",maxWidth:"360px",width:"100%"}}>
-            <div style={{fontSize:"72px",marginBottom:"12px",filter:"drop-shadow(0 0 22px rgba(232,98,42,0.46))"}}>🕉️</div>
-            <div style={{display:"inline-flex",background:"rgba(232,98,42,0.1)",border:"1px solid rgba(232,98,42,0.22)",color:"#E8622A",fontSize:"10px",fontWeight:"700",letterSpacing:"2.5px",padding:"5px 14px",borderRadius:"20px",marginBottom:"18px"}}>AYUSH UTTARAKHAND × IDY 2026</div>
-            <h1 style={{fontSize:"42px",fontWeight:"800",lineHeight:1.05,marginBottom:"10px",letterSpacing:"-1px"}}>YogaPath<br/><span style={{background:"linear-gradient(135deg,#E8622A,#F59E0B)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Uttarakhand</span></h1>
-            <p style={{color:"#1A4A1A",fontSize:"13px",lineHeight:1.8,marginBottom:"28px"}}>फोटो · वीडियो · संदेश<br/>अपना योग, अपने अंदाज़ में साझा करें 🙏</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"24px"}}>
-              {MODES.map(m=>(
-                <div key={m.id} style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)",borderRadius:"12px",padding:"10px 6px",textAlign:"center"}}>
-                  <div style={{fontSize:"22px",marginBottom:"4px"}}>{m.icon}</div>
-                  <div style={{fontSize:"10px",color:"#1A4A1A",fontWeight:"600"}}>{m.titleHi}</div>
+      {/* ── HOME ── */}
+      {screen==="home"&&(
+        <div className="page fade" style={{padding:"0 0 32px"}}>
+          {/* App Header */}
+          <div style={{background:"linear-gradient(135deg,#080F08,#0A160A)",padding:"36px 24px 24px",borderBottom:"1px solid #0D1A0D",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:"-40px",right:"-40px",width:"180px",height:"180px",borderRadius:"50%",background:"radial-gradient(circle,rgba(232,98,42,0.1),transparent)",filter:"blur(30px)"}}/>
+            <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+              <div style={{fontSize:"44px",filter:"drop-shadow(0 0 16px rgba(232,98,42,0.5))"}} >🕉️</div>
+              <div>
+                <div style={{fontSize:"26px",fontWeight:"800",letterSpacing:"-0.5px",lineHeight:1.1}}>YogaPath</div>
+                <div style={{background:"linear-gradient(135deg,#E8622A,#F59E0B)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",fontSize:"18px",fontWeight:"700",letterSpacing:"0.5px"}}>Uttarakhand</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div>
+                <div style={{color:"#1A5A1A",fontSize:"12px",fontWeight:"300"}}>AYUSH Uttarakhand  ·  IDY 2026</div>
+                <div style={{color:"#E8622A",fontSize:"12px",fontWeight:"600",marginTop:"2px"}}>21 June 2026  🧘  International Day of Yoga</div>
+              </div>
+              <div style={{background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.18)",borderRadius:"10px",padding:"6px 12px",textAlign:"center"}}>
+                <div style={{color:"#10A87C",fontWeight:"800",fontSize:"18px"}}>{community.length}+</div>
+                <div style={{color:"#1A3A1A",fontSize:"9px",marginTop:"1px"}}>Yogis</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Features Grid */}
+          <div style={{padding:"20px 18px 0"}}>
+            <div style={{color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"14px"}}>Features</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"12px"}}>
+
+              {/* Yoga Frame — ACTIVE */}
+              <div className="tap" onClick={()=>setScreen("onboard")} style={{background:"linear-gradient(135deg,rgba(232,98,42,0.12),rgba(232,98,42,0.06))",border:"1.5px solid rgba(232,98,42,0.35)",borderRadius:"18px",padding:"20px 16px",cursor:"pointer",gridColumn:"span 2",boxShadow:"0 4px 20px rgba(232,98,42,0.12)"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px"}}>
+                  <div style={{fontSize:"36px"}}>🖼️</div>
+                  <div style={{background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",fontSize:"10px",fontWeight:"800",padding:"4px 10px",borderRadius:"8px",letterSpacing:"1px"}}>ACTIVE</div>
                 </div>
-              ))}
+                <div style={{fontWeight:"800",fontSize:"20px",marginBottom:"4px"}}>Yoga Frame</div>
+                <div style={{color:"#6A3A1A",fontSize:"13px",marginBottom:"14px"}}>Photo, Video & Message — AYUSH branded frame</div>
+                <div style={{display:"flex",gap:"8px"}}>
+                  {MODES.map(m=><div key={m.id} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:"8px",padding:"6px 10px",fontSize:"11px",color:"#4A2A1A",display:"flex",alignItems:"center",gap:"5px"}}><span>{m.icon}</span><span>{m.titleHi}</span></div>)}
+                </div>
+              </div>
+
+              {/* District Wall */}
+              <div className="tap" onClick={()=>setScreen("community")} style={{background:"#0A120A",border:"1px solid #101E10",borderRadius:"18px",padding:"18px 16px",cursor:"pointer"}}>
+                <div style={{fontSize:"30px",marginBottom:"10px"}}>🗺️</div>
+                <div style={{fontWeight:"700",fontSize:"15px",marginBottom:"3px"}}>District Wall</div>
+                <div style={{color:"#1A4A1A",fontSize:"12px",marginBottom:"10px"}}>Live participation map</div>
+                <div style={{background:"rgba(16,168,124,0.08)",borderRadius:"7px",padding:"5px 8px",display:"inline-block"}}>
+                  <span style={{color:"#10A87C",fontWeight:"700",fontSize:"13px"}}>{community.length}</span>
+                  <span style={{color:"#1A4A1A",fontSize:"11px",marginLeft:"4px"}}>entries</span>
+                </div>
+              </div>
+
+              {/* Certificate — Coming Soon */}
+              <div style={{background:"#0A120A",border:"1px solid #0D1A0D",borderRadius:"18px",padding:"18px 16px",opacity:0.5,position:"relative"}}>
+                <div style={{fontSize:"30px",marginBottom:"10px"}}>📜</div>
+                <div style={{fontWeight:"700",fontSize:"15px",marginBottom:"3px"}}>Certificate</div>
+                <div style={{color:"#1A3A1A",fontSize:"12px"}}>Participation certificate</div>
+                <div style={{position:"absolute",top:"12px",right:"12px",background:"#1A2A1A",color:"#2A5A2A",fontSize:"9px",fontWeight:"700",padding:"3px 8px",borderRadius:"6px",letterSpacing:"1px"}}>SOON</div>
+              </div>
+
+              {/* Leaderboard — Coming Soon */}
+              <div style={{background:"#0A120A",border:"1px solid #0D1A0D",borderRadius:"18px",padding:"18px 16px",opacity:0.5,position:"relative"}}>
+                <div style={{fontSize:"30px",marginBottom:"10px"}}>🏆</div>
+                <div style={{fontWeight:"700",fontSize:"15px",marginBottom:"3px"}}>Leaderboard</div>
+                <div style={{color:"#1A3A1A",fontSize:"12px"}}>Top districts & yogis</div>
+                <div style={{position:"absolute",top:"12px",right:"12px",background:"#1A2A1A",color:"#2A5A2A",fontSize:"9px",fontWeight:"700",padding:"3px 8px",borderRadius:"6px",letterSpacing:"1px"}}>SOON</div>
+              </div>
+
+              {/* QR / Share — Coming Soon */}
+              <div style={{background:"#0A120A",border:"1px solid #0D1A0D",borderRadius:"18px",padding:"18px 16px",opacity:0.5,position:"relative"}}>
+                <div style={{fontSize:"30px",marginBottom:"10px"}}>📊</div>
+                <div style={{fontWeight:"700",fontSize:"15px",marginBottom:"3px"}}>Analytics</div>
+                <div style={{color:"#1A3A1A",fontSize:"12px"}}>District-wise reports</div>
+                <div style={{position:"absolute",top:"12px",right:"12px",background:"#1A2A1A",color:"#2A5A2A",fontSize:"9px",fontWeight:"700",padding:"3px 8px",borderRadius:"6px",letterSpacing:"1px"}}>SOON</div>
+              </div>
+
             </div>
-            <div style={{background:"rgba(16,168,124,0.05)",border:"1px solid rgba(16,168,124,0.14)",borderRadius:"14px",padding:"12px",marginBottom:"24px",display:"flex",alignItems:"center",justifyContent:"center",gap:"10px"}}>
-              <span style={{color:"#10A87C",fontWeight:"800",fontSize:"24px"}}>{community.length}+</span>
-              <span style={{color:"#1A4A1A",fontSize:"13px"}}>yogis joined from Uttarakhand</span>
-            </div>
-            <button className="tap" onClick={()=>setScreen("onboard")} style={{display:"block",width:"100%",background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"16px",padding:"17px",fontSize:"17px",fontWeight:"700",cursor:"pointer",boxShadow:"0 8px 26px rgba(232,98,42,0.34)",marginBottom:"10px"}}>
-              Begin Your Journey →
-            </button>
-            <button onClick={()=>setScreen("community")} style={{background:"transparent",color:"#1A3A1A",border:"none",padding:"10px",fontSize:"12px",cursor:"pointer",width:"100%"}}>View District Wall →</button>
+          </div>
+
+          {/* Footer */}
+          <div style={{padding:"24px 24px 0",textAlign:"center"}}>
+            <div style={{color:"#0F1F0F",fontSize:"11px"}}>Dept. of Ayurvedic & Unani Services  ·  National AYUSH Mission, Uttarakhand</div>
           </div>
         </div>
       )}
@@ -596,7 +652,7 @@ export default function App() {
       {screen==="onboard"&&(
         <div className="page fade" style={{padding:"28px 24px"}}>
           <div style={{display:"flex",alignItems:"center",marginBottom:"14px"}}>
-            <button className="back" onClick={()=>setScreen("splash")}>←</button>
+            <button className="back" onClick={()=>setScreen("home")}>←</button>
             <div style={{marginLeft:"14px"}}><div style={{color:"#1A4A1A",fontSize:"11px",letterSpacing:"2.5px",textTransform:"uppercase",marginBottom:"2px"}}>Step 1 of 4</div><div style={{fontSize:"20px",fontWeight:"700"}}>Your Profile</div></div>
           </div>
           <div className="prog"><div className="pfill" style={{width:"25%"}}/></div>
