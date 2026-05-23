@@ -781,4 +781,53 @@ export default function App() {
             <div style={{background:"linear-gradient(180deg,#060F06,#060909)",padding:"28px 24px 18px"}}>
               <div style={{display:"flex",alignItems:"center",marginBottom:"20px"}}>
                 <button className="back" onClick={()=>setScreen(joined?"preview":"splash")}>←</button>
- 
+                 <div style={{marginLeft:"14px"}}><div style={{fontSize:"21px",fontWeight:"800"}}>District Wall 🗺️</div><div style={{color:"#1A5A1A",fontSize:"12px",fontWeight:"300"}}>Yoga @ 100 Uttarakhand · IDY 2026</div></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"10px"}}>
+                {[{val:community.length,label:"Total Entries",color:"#E8622A"},{val:sorted.filter(d=>d[1]>0).length,label:"Districts Active",color:"#10A87C"}].map(({val,label,color})=>(
+                  <div key={label} style={{background:"#0A120A",borderRadius:"12px",padding:"12px",textAlign:"center",border:`1px solid ${color}16`}}><div style={{color,fontSize:"24px",fontWeight:"800"}}>{val}</div><div style={{color:"#1A3A1A",fontSize:"10px",marginTop:"2px"}}>{label}</div></div>
+                ))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px"}}>
+                {MODES.map(m=><div key={m.id} style={{background:"#0A120A",borderRadius:"10px",padding:"8px",textAlign:"center",border:`1px solid ${m.color}14`}}><div style={{fontSize:"18px"}}>{m.icon}</div><div style={{color:m.color,fontWeight:"700",fontSize:"16px"}}>{mc[m.id]||0}</div><div style={{color:"#1A3A1A",fontSize:"10px"}}>{m.titleHi}</div></div>)}
+              </div>
+            </div>
+            <div style={{padding:"14px 20px"}}>
+              <div style={{marginBottom:"22px"}}>
+                <div style={{color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"10px"}}>District Breakdown</div>
+                {sorted.slice(0,13).map(([dist,count])=>{const maxV=sorted[0]?.[1]||1;return(
+                  <div key={dist} style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"7px"}}>
+                    <div style={{width:"118px",fontSize:"11px",color:"#2A6A2A",textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dist}</div>
+                    <div style={{flex:1,background:"#09130A",borderRadius:"4px",height:"7px",overflow:"hidden"}}>
+                      <div style={{width:`${(count/maxV)*100}%`,height:"100%",background:"linear-gradient(90deg,#E8622A,#10A87C)",borderRadius:"4px"}}/>
+                    </div>
+                    <div style={{width:"20px",fontSize:"11px",color:"#E8622A",fontWeight:"700",flexShrink:0}}>{count}</div>
+                  </div>
+                );})}
+              </div>
+              <div style={{color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"10px"}}>Recent Entries</div>
+              {community.slice(0,20).map((entry,i)=>{
+                const isMe=entry.name===name&&entry.district===district;
+                const mO=MODES.find(m=>m.id===entry.mode);
+                const aO=ASANAS.find(a=>a.name===entry.asana);
+                const color=AV_COLORS[i%AV_COLORS.length];
+                return(
+                  <div key={entry.id||i} style={{display:"flex",alignItems:"center",gap:"11px",background:isMe?"rgba(232,98,42,0.05)":"#090F09",border:`1px solid ${isMe?"rgba(232,98,42,0.25)":"#0B180B"}`,borderRadius:"13px",padding:"11px 13px",marginBottom:"8px"}}>
+                    <div style={{width:"40px",height:"40px",borderRadius:"50%",background:`linear-gradient(135deg,${color},${color}88)`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:"700",fontSize:"13px",flexShrink:0}}>{getInitials(entry.name)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:"5px"}}><span style={{fontWeight:"700",fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.name}</span>{isMe&&<span style={{background:"#E8622A",color:"white",fontSize:"9px",fontWeight:"800",padding:"2px 6px",borderRadius:"5px",flexShrink:0}}>YOU</span>}</div>
+                      {entry.role&&<div style={{color,fontSize:"10px",marginTop:"1px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.role}</div>}
+                      <div style={{color:"#1A4A1A",fontSize:"10px",marginTop:"2px"}}>{mO?.icon||"🧘"} {entry.asana||"Message"} · 📍 {entry.district}</div>
+                    </div>
+                    <div style={{color:"#0A200A",fontSize:"10px",flexShrink:0,textAlign:"right"}}><div>{entry.date}</div><div style={{fontSize:"18px",marginTop:"2px"}}>{aO?.icon||mO?.icon||"🧘"}</div></div>
+                  </div>
+                );
+              })}
+              {!joined&&<button className="tap" onClick={()=>setScreen("onboard")} style={{width:"100%",background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"14px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginTop:"14px",boxShadow:"0 7px 22px rgba(232,98,42,0.28)"}}>Create on YogaPath →</button>}
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+}
