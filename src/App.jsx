@@ -840,43 +840,37 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         "video/webm;codecs=vp8",
         "video/webm"
       ].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-      med.muted=false; med.volume=1; med.loop=false; med.currentTime=0;
-      // Play first — captureStream only returns audio AFTER video is playing
-      await new Promise(resolve=>{
-        const onP=()=>{med.removeEventListener("playing",onP);resolve();};
-        med.addEventListener("playing",onP);
-        med.play().catch(()=>resolve());
-        setTimeout(resolve,800);
-      });
-      // Canvas video stream
-      const canvasVidStream=canvasRef.current.captureStream(30);
-      const videoTrack=canvasVidStream.getVideoTracks()[0];
-      // Audio: from video element (now playing)
-      let audioTrack=null;
+      med.muted=false; med.volume=1; med.loop=false;
+      med.style.cssText="position:fixed;width:1px;height:1px;opacity:0.01;top:0;left:0;pointer-events:none;";
+      document.body.appendChild(med);
+      const cs=canvasRef.current.captureStream(30);
+      let ac2=null;
       try{
-        const vs=med.captureStream?med.captureStream():med.mozCaptureStream?med.mozCaptureStream():null;
-        audioTrack=vs?.getAudioTracks()?.[0]||null;
+        ac2=new(window.AudioContext||window.webkitAudioContext)();
+        if(ac2.state==="suspended") await ac2.resume();
+        const asrc=ac2.createMediaElementSource(med);
+        const adst=ac2.createMediaStreamDestination();
+        asrc.connect(adst);
+        adst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));
       }catch(e){}
-      if(!audioTrack){
-        try{
-          const ac=new(window.AudioContext||window.webkitAudioContext)();
-          if(ac.state==="suspended") await ac.resume();
-          const src=ac.createMediaElementSource(med);
-          const dst=ac.createMediaStreamDestination();
-          src.connect(dst); src.connect(ac.destination);
-          audioTrack=dst.stream.getAudioTracks()?.[0]||null;
-        }catch(e){}
-      }
-      // Combine canvas video + original audio
-      const combined=new MediaStream([videoTrack,audioTrack].filter(Boolean));
       const chunks=[];
-      const rec=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:3000000});
+      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:3000000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{const bm=mime.split(";")[0];const blob=new Blob(chunks,{type:bm});const url=URL.createObjectURL(blob);setSaving(false);onCapture({type:"video",blob,url,mime:bm});};
+      rec.onstop=()=>{
+        try{document.body.removeChild(med);}catch(e){}
+        try{ac2&&ac2.close();}catch(e){}
+        const bm=mime.split(";")[0];
+        const blob=new Blob(chunks,{type:bm});
+        const url=URL.createObjectURL(blob);
+        setSaving(false);
+        onCapture({type:"video",blob,url,mime:bm});
+      };
+      med.currentTime=0;
+      await new Promise(r=>{med.onseeked=()=>r();setTimeout(r,500);});
       rec.start(100);
+      await med.play().catch(e=>setErr("Play error: "+e.message));
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
-      setTimeout(()=>{if(rec.state==="recording")rec.stop();},300000);
-    }
+      setTimeout(()=>{if(rec.state==="recording")rec.stop();},300000);  }
   }
 
   useEffect(()=>()=>{cancelAnimationFrame(animRef.current);},[]);
@@ -1069,36 +1063,28 @@ export default function App() {
   async function shareWA(){
     const who=role?(name+" ("+role+")"):name;
     const what=mode==="message"?"Yoga Message":(asana?.name||"Yoga");
-    const defaultMsg="🕉️ "+who+"\n📍 "+district+", Uttarakhand\n🧘 "+what+"\n\n12वाँ अन्तर्राष्ट्रीय योग दिवस 🙏\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath";
-    const txt=waMsg.trim()||defaultMsg;
-    let file=null;
+    const txt=waMsg.trim()||("12वाँ अन्तर्राष्ट्रीय योग दिवस 🙏\n\n🧘 "+who+"\n📍 "+district+", Uttarakhand\n🎯 "+what+"\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH");
+    if(captured?.type==="video"){
+      try{
+        const mime=captured.mime||"video/mp4";
+        const ext=mime.includes("mp4")?"mp4":"webm";
+        const a=document.createElement("a");
+        a.href=captured.url||URL.createObjectURL(captured.blob);
+        a.download="YogaPath-IDY2026."+ext;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+      }catch(e){}
+      setShareHint(true);
+      return;
+    }
     try{
-      if(captured?.type==="photo"&&captured?.url){
+      let file=null;
+      if(captured?.url){
         const res=await fetch(captured.url);
         const blob=await res.blob();
         file=new File([blob],"YogaPath-IDY2026.jpg",{type:"image/jpeg"});
-      } else if(captured?.type==="video"&&captured?.blob){
-        const mime=captured.mime||"video/mp4";
-        const baseMime=mime.split(";")[0];
-        const ext=baseMime.includes("mp4")?"mp4":"webm";
-        file=new File([captured.blob],"YogaPath-IDY2026."+ext,{type:baseMime});
       }
-    }catch(e){}
-    // Try 1: native share with file (skip canShare - often wrong on Android)
-    if(file&&navigator.share){
-      try{ await navigator.share({files:[file],text:captured?.type==="photo"?txt:""}); return; }catch(e){
-        if(e?.name==="AbortError") return;
-        try{ await navigator.share({files:[file]}); return; }catch(e2){ if(e2?.name==="AbortError") return; }
-      }
-    }
-    // Try 2: download + WhatsApp text
-    if(file){
-      const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=file.name;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setShareHint(true);
-      setTimeout(()=>window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank"),800);
-      return;
-    }
+      if(file&&navigator.share){ await navigator.share({files:[file],text:txt}); return; }
+    }catch(e){ if(e?.name==="AbortError") return; }
     window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
   }
   // ── Challenge helpers ──────────────────────────────────────────────────
