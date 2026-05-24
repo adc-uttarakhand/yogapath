@@ -830,44 +830,50 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       onCapture({type:"photo",url});
     } else {
       setSaving(true);
-      const mime=["video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-      // ── Prepare video ──
+      const mime=[
+        "video/mp4;codecs=h264,aac",
+        "video/mp4;codecs=h264",
+        "video/mp4",
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm"
+      ].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
       med.muted=false; med.volume=1; med.loop=false; med.currentTime=0;
-      await new Promise(r=>{med.onseeked=r; if(med.readyState>=2)r();});
-      // ── Canvas stream (video) ──
-      const cs=canvasRef.current.captureStream(30);
-      // ── Audio: try 3 methods in order ──
-      let gotAudio=false;
-      // Method 1: captureStream on video element
+      // Play first — captureStream only returns audio AFTER video is playing
+      await new Promise(resolve=>{
+        const onP=()=>{med.removeEventListener("playing",onP);resolve();};
+        med.addEventListener("playing",onP);
+        med.play().catch(()=>resolve());
+        setTimeout(resolve,800);
+      });
+      // Canvas video stream
+      const canvasVidStream=canvasRef.current.captureStream(30);
+      const videoTrack=canvasVidStream.getVideoTracks()[0];
+      // Audio: from video element (now playing)
+      let audioTrack=null;
       try{
         const vs=med.captureStream?med.captureStream():med.mozCaptureStream?med.mozCaptureStream():null;
-        const atracks=vs?vs.getAudioTracks():[];
-        if(atracks.length>0){atracks.forEach(t=>cs.addTrack(t));gotAudio=true;}
+        audioTrack=vs?.getAudioTracks()?.[0]||null;
       }catch(e){}
-      // Method 2: Web Audio API (works on Android Chrome)
-      if(!gotAudio){
+      if(!audioTrack){
         try{
           const ac=new(window.AudioContext||window.webkitAudioContext)();
           if(ac.state==="suspended") await ac.resume();
           const src=ac.createMediaElementSource(med);
           const dst=ac.createMediaStreamDestination();
-          src.connect(dst);
-          // Do NOT connect src to ac.destination — avoids double playback
-          const atracks=dst.stream.getAudioTracks();
-          if(atracks.length>0){atracks.forEach(t=>cs.addTrack(t));gotAudio=true;}
+          src.connect(dst); src.connect(ac.destination);
+          audioTrack=dst.stream.getAudioTracks()?.[0]||null;
         }catch(e){}
       }
+      // Combine canvas video + original audio
+      const combined=new MediaStream([videoTrack,audioTrack].filter(Boolean));
       const chunks=[];
-      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:3000000});
+      const rec=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:3000000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{
-        const blob=new Blob(chunks,{type:mime});
-        const url=URL.createObjectURL(blob);
-        setSaving(false);
-        onCapture({type:"video",blob,url,mime});
-      };
+      rec.onstop=()=>{const bm=mime.split(";")[0];const blob=new Blob(chunks,{type:bm});const url=URL.createObjectURL(blob);setSaving(false);onCapture({type:"video",blob,url,mime:bm});};
       rec.start(100);
-      med.play().catch(e=>setErr("Video play error: "+e.message));
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
       setTimeout(()=>{if(rec.state==="recording")rec.stop();},300000);
     }
@@ -1052,7 +1058,8 @@ export default function App() {
     const a=document.createElement("a");
     if(captured.type==="video"){
       a.href=captured.url||URL.createObjectURL(captured.blob);
-      a.download=`YogaPath-IDY2026-${Date.now()}.webm`;
+      const ext=(captured.mime||"").includes("mp4")?"mp4":"webm";
+      a.download=`YogaPath-IDY2026-${Date.now()}.${ext}`;
     } else {
       a.href=captured.url;
       a.download=`YogaPath-IDY2026-${Date.now()}.jpg`;
@@ -1072,8 +1079,9 @@ export default function App() {
         file=new File([blob],"YogaPath-IDY2026.jpg",{type:"image/jpeg"});
       } else if(captured?.type==="video"&&captured?.blob){
         const mime=captured.mime||"video/mp4";
-        const ext=mime.includes("mp4")?"mp4":"webm";
-        file=new File([captured.blob],"YogaPath-IDY2026."+ext,{type:mime});
+        const baseMime=mime.split(";")[0];
+        const ext=baseMime.includes("mp4")?"mp4":"webm";
+        file=new File([captured.blob],"YogaPath-IDY2026."+ext,{type:baseMime});
       }
     }catch(e){}
     // Try 1: native share with file (skip canShare - often wrong on Android)
