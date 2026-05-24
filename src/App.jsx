@@ -296,6 +296,45 @@ function drawSquareFrame(canvas, source, frameImg, p) {
 }
 
 
+function drawLandscapeFrame(canvas, source, frameImg, p) {
+  const ctx=canvas.getContext("2d");
+  const FW=1280, FH=640, STRIP=88;
+  canvas.width=FW; canvas.height=FH+STRIP;
+  // Photo fills frame area
+  if(source&&(source.readyState===undefined||source.readyState>=2)){
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,FW,FH); ctx.clip();
+    const sw=source.videoWidth||source.naturalWidth||FW;
+    const sh=source.videoHeight||source.naturalHeight||FH;
+    const sc=Math.max(FW/sw,FH/sh);
+    ctx.drawImage(source,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
+    ctx.restore();
+  } else { ctx.fillStyle="#e8e8e8"; ctx.fillRect(0,0,FW,FH); }
+  // Frame overlay
+  if(frameImg) ctx.drawImage(frameImg,0,0,FW,FH);
+  // Strip
+  const sg=ctx.createLinearGradient(0,FH,0,FH+STRIP);
+  sg.addColorStop(0,"#0A1A0A"); sg.addColorStop(1,"#060F06");
+  ctx.fillStyle=sg; ctx.fillRect(0,FH,FW,STRIP);
+  ctx.fillStyle="#E8622A"; ctx.fillRect(0,FH,FW,4);
+  // One line auto-fit text
+  const pin=String.fromCodePoint(0x1F4CD);
+  const sep="   |   ";
+  const parts=[p.name||"Yogi"];
+  if(p.role) parts.push(p.role);
+  if(p.district) parts.push(pin+" "+p.district);
+  if(p.mode==="message") parts.push("Yoga Message");
+  else if(p.asana) parts.push(p.asana.name+" | "+p.asana.sanskrit);
+  const line=parts.join(sep);
+  const MAX_W=FW-48;
+  let fs=28;
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  while(ctx.measureText(line).width>MAX_W&&fs>13){fs--;ctx.font="bold "+fs+"px Arial,sans-serif";}
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillText(line,FW/2,FH+STRIP/2+4);
+  ctx.textBaseline="alphabetic";
+}
+
 function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg, bgStyle="dark", orientation="portrait" }) {
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
@@ -464,8 +503,8 @@ select.inp{colorScheme:dark;} select.inp option{background:#0C150C;}
 `;
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
-function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, onCapture, onBack }) {
-  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null), sqImgRef=useRef(null);
+function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, lsFrame, onCapture, onBack }) {
+  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null), sqImgRef=useRef(null), lsImgRef=useRef(null);
   const [camState,setCamState]=useState("idle");
   // Load square PNG frame directly inside CameraScreen
   useEffect(()=>{
@@ -476,6 +515,15 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
       img.src=`/frames/frame-sq-${sqFrame}.png`;
     } else { sqImgRef.current=null; }
   },[orientation,sqFrame]);
+
+  useEffect(()=>{
+    if(orientation==="landscape"&&lsFrame){
+      const img=new Image();
+      img.onload=()=>{ lsImgRef.current=img; };
+      img.onerror=()=>{ lsImgRef.current=null; };
+      img.src=`/frames/frame-ls-${lsFrame}.png`;
+    } else { lsImgRef.current=null; }
+  },[orientation,lsFrame]);
   const [facing,setFacing]=useState("user");
   const [secs,setSecs]=useState(0);
   const [err,setErr]=useState(null);
@@ -489,18 +537,22 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     if(cv.width!==CW) cv.width=CW;
     if(cv.height!==CH) cv.height=CH;
     const sqImg=sqImgRef.current;
+    const lsImg=lsImgRef.current;
     if(orientation==="square"&&sqImg){
-        // Square+PNG: canvas is 1080x1208 (frame + strip)
         if(cv.width!==1080) cv.width=1080;
         if(cv.height!==1168) cv.height=1168;
         drawSquareFrame(cv,videoRef.current,sqImg,{name,role,district,mode,asana,msg,sqFrame});
+      } else if(orientation==="landscape"&&lsImg){
+        if(cv.width!==1280) cv.width=1280;
+        if(cv.height!==728) cv.height=728;
+        drawLandscapeFrame(cv,videoRef.current,lsImg,{name,role,district,mode,asana,msg});
       } else {
         if(cv.width!==CW) cv.width=CW;
         if(cv.height!==CH) cv.height=CH;
         drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
       }
     animRef.current=requestAnimationFrame(drawLoop);
-  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,CW,CH]);
+  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,lsFrame,CW,CH]);
 
   async function startCam(f=facing){
     try{
@@ -601,6 +653,7 @@ export default function App() {
   const [joined,setJoined]=useState(false);
   const [showRoleDD,setShowRoleDD]=useState(false);
   const [sqFrame,setSqFrame]=useState(1);
+  const [lsFrame,setLsFrame]=useState(1);
   const [installPrompt,setInstallPrompt]=useState(null);
   const [isInstalled,setIsInstalled]=useState(false);
   const [isIOS,setIsIOS]=useState(false);
@@ -929,6 +982,19 @@ export default function App() {
                   📸 Photo/Video frame ke center में आएगी · नाम, पद और जिला नीचे overlay होगा
                 </div>
               </>
+            ) : orientation==="landscape" ? (
+              <>
+                <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"12px"}}>Frame Design चुनें</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+                  {[1,2,3,4,5].map(i=>(
+                    <div key={i} className="tap" onClick={()=>setLsFrame(i)} style={{borderRadius:"12px",overflow:"hidden",border:`2.5px solid ${lsFrame===i?"#10A87C":"#101E10"}`,cursor:"pointer",position:"relative",boxShadow:lsFrame===i?"0 0 0 2px rgba(16,168,124,0.3)":"none",transition:"all 0.15s"}}>
+                      <img src={`/frames/frame-ls-${i}.png`} alt={`Frame ${i}`} style={{width:"100%",display:"block"}} loading="lazy"/>
+                      {lsFrame===i&&<div style={{position:"absolute",top:"6px",right:"6px",background:"#10A87C",color:"white",fontSize:"10px",fontWeight:"800",width:"20px",height:"20px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>✓</div>}
+                      <div style={{padding:"5px 4px",background:"#0A120A",textAlign:"center",fontSize:"10px",color:lsFrame===i?"#10A87C":"#1A5A1A",fontWeight:"600"}}>Design {i}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"12px"}}>Background / बैकग्राउंड</label>
@@ -946,7 +1012,7 @@ export default function App() {
       )}
 
       {/* ── CAMERA ── */}
-      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
+      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} lsFrame={lsFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
 
       {/* ── PREVIEW ── */}
       {screen==="preview"&&captured&&(
