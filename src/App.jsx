@@ -393,7 +393,7 @@ function drawSquareFrame(canvas, source, frameImg, p) {
     ctx.save(); ctx.beginPath(); ctx.rect(0,0,FW,FH); ctx.clip();
     const sw=source.videoWidth||source.naturalWidth||FW;
     const sh=source.videoHeight||source.naturalHeight||FH;
-    const sc=Math.max(FW/sw,FH/sh);
+    const sc=Math.min(FW/sw,FH/sh);
     ctx.drawImage(source,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
     ctx.restore();
   } else { ctx.fillStyle="#e8e8e8"; ctx.fillRect(0,0,FW,FH); }
@@ -433,11 +433,12 @@ function drawPortraitFrame(canvas, source, frameImg, p) {
   const ctx=canvas.getContext("2d");
   const FW=720, FH=1280, STRIP=88;
   canvas.width=FW; canvas.height=FH+STRIP;
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,FW,FH);
   if(source&&(source.readyState===undefined||source.readyState>=2)){
     ctx.save(); ctx.beginPath(); ctx.rect(0,0,FW,FH); ctx.clip();
     const sw=source.videoWidth||source.naturalWidth||FW;
     const sh=source.videoHeight||source.naturalHeight||FH;
-    const sc=Math.max(FW/sw,FH/sh);
+    const sc=Math.min(FW/sw,FH/sh);
     ctx.drawImage(source,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
     ctx.restore();
   } else { ctx.fillStyle="#e8e8e8"; ctx.fillRect(0,0,FW,FH); }
@@ -467,12 +468,13 @@ function drawLandscapeFrame(canvas, source, frameImg, p) {
   const ctx=canvas.getContext("2d");
   const FW=1280, FH=640, STRIP=88;
   canvas.width=FW; canvas.height=FH+STRIP;
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,FW,FH);
   // Photo fills frame area
   if(source&&(source.readyState===undefined||source.readyState>=2)){
     ctx.save(); ctx.beginPath(); ctx.rect(0,0,FW,FH); ctx.clip();
     const sw=source.videoWidth||source.naturalWidth||FW;
     const sh=source.videoHeight||source.naturalHeight||FH;
-    const sc=Math.max(FW/sw,FH/sh);
+    const sc=Math.min(FW/sw,FH/sh);
     ctx.drawImage(source,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
     ctx.restore();
   } else { ctx.fillStyle="#e8e8e8"; ctx.fillRect(0,0,FW,FH); }
@@ -526,7 +528,7 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
       ctx.save(); ctx.beginPath(); ctx.rect(0,MY,W,MH); ctx.clip();
       const sw=source.videoWidth||source.naturalWidth||W;
       const sh=source.videoHeight||source.naturalHeight||H;
-      const sc=Math.max(W/sw,MH/sh);
+      const sc=Math.min(W/sw,MH/sh);
       ctx.drawImage(source,(W-sw*sc)/2,MY+(MH-sh*sc)/2,sw*sc,sh*sc);
       ctx.restore();
       const fadeB=ctx.createLinearGradient(0,MY+MH-H*0.1,0,MY+MH);
@@ -585,7 +587,7 @@ function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg
       ctx.save(); ctx.beginPath(); ctx.rect(0,BODY_Y,PHOTO_W,BODY_H); ctx.clip();
       const sw=source.videoWidth||source.naturalWidth||W;
       const sh=source.videoHeight||source.naturalHeight||H;
-      const sc=Math.max(PHOTO_W/sw,BODY_H/sh);
+      const sc=Math.min(PHOTO_W/sw,BODY_H/sh);
       ctx.drawImage(source,(PHOTO_W-sw*sc)/2,BODY_Y+(BODY_H-sh*sc)/2,sw*sc,sh*sc);
       ctx.restore();
       const fadeR=ctx.createLinearGradient(PHOTO_W-H*0.12,0,PHOTO_W,0);
@@ -743,7 +745,7 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     try{
       if(streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop());
       const s=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:f}},
+        video:{facingMode:{ideal:f},width:{ideal:720,max:1280},height:{ideal:1280,max:1920}},
         audio:!isPhoto
       });
       // Try to set minimum zoom (1x)
