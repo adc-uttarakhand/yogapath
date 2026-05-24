@@ -250,6 +250,34 @@ function drawBackground(ctx, W, H, style) {
 }
 
 // ─── MAIN FRAME DRAWING ───────────────────────────────────
+function drawSquareFrame(canvas, source, frameImg, p) {
+  const ctx=canvas.getContext("2d");
+  const W=1080,H=1080;
+  canvas.width=W; canvas.height=H;
+  if(source&&(source.readyState===undefined||source.readyState>=2)){
+    const sw=source.videoWidth||source.naturalWidth||W;
+    const sh=source.videoHeight||source.naturalHeight||H;
+    const sc=Math.max(W/sw,H/sh);
+    ctx.drawImage(source,(W-sw*sc)/2,(H-sh*sc)/2,sw*sc,sh*sc);
+  } else { ctx.fillStyle="#1a2a1a"; ctx.fillRect(0,0,W,H); }
+  if(frameImg) ctx.drawImage(frameImg,0,0,W,H);
+  const TY=870;
+  const gr=ctx.createLinearGradient(0,TY,0,H);
+  gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.3,"rgba(0,0,0,0.72)"); gr.addColorStop(1,"rgba(0,0,0,0.88)");
+  ctx.fillStyle=gr; ctx.fillRect(0,TY,W,H-TY);
+  ctx.textAlign="center";
+  ctx.font="bold 46px Arial,sans-serif"; ctx.fillStyle="#FFFFFF";
+  ctx.fillText(p.name||"Yogi",W/2,TY+62);
+  if(p.role){ ctx.font="28px Arial,sans-serif"; ctx.fillStyle="rgba(255,200,70,0.95)"; ctx.fillText(p.role,W/2,TY+104); }
+  ctx.font="26px Arial,sans-serif"; ctx.fillStyle="rgba(180,220,180,0.88)";
+  const pin = String.fromCodePoint(0x1F4CD);
+  ctx.fillText(pin+" "+(p.district||"Uttarakhand"),W/2,TY+(p.role?142:108));
+  const lbl=p.mode==="message"?"Yoga Message":(p.asana?p.asana.name+" | "+p.asana.sanskrit:"");
+  if(lbl){ ctx.font="bold 24px Arial,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.fillText(lbl,W/2,TY+(p.role?180:146)); }
+  ctx.font="16px Arial,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.28)";
+  ctx.fillText("AYUSH Uttarakhand  |  International Day of Yoga 2026",W/2,H-14);
+}
+
 function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg, bgStyle="dark", orientation="portrait" }) {
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
@@ -418,7 +446,7 @@ select.inp{colorScheme:dark;} select.inp option{background:#0C150C;}
 `;
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
-function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, onCapture, onBack }) {
+function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, frameImg, onCapture, onBack }) {
   const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null);
   const [camState,setCamState]=useState("idle");
   const [facing,setFacing]=useState("user");
@@ -433,9 +461,13 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     const cv=canvasRef.current;
     if(cv.width!==CW) cv.width=CW;
     if(cv.height!==CH) cv.height=CH;
-    drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
+    if(orientation==="square"&&frameImg){
+        drawSquareFrame(cv,videoRef.current,frameImg,{name,role,district,mode,asana,msg});
+      } else {
+        drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
+      }
     animRef.current=requestAnimationFrame(drawLoop);
-  },[asana,name,district,role,mode,msg,bgStyle,orientation,CW,CH]);
+  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,frameImg,CW,CH]);
 
   async function startCam(f=facing){
     try{
@@ -535,6 +567,8 @@ export default function App() {
   const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
   const [showRoleDD,setShowRoleDD]=useState(false);
+  const [sqFrame,setSqFrame]=useState(1);
+  const [frameImgs,setFrameImgs]=useState({});
   const [installPrompt,setInstallPrompt]=useState(null);
   const [isInstalled,setIsInstalled]=useState(false);
   const [isIOS,setIsIOS]=useState(false);
@@ -548,6 +582,14 @@ export default function App() {
     const handler=(e)=>{ e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     return ()=>window.removeEventListener('beforeinstallprompt', handler);
+  },[]);
+
+  useEffect(()=>{
+    [1,2,3,4,5].forEach(i=>{
+      const img=new Image();
+      img.onload=()=>setFrameImgs(prev=>({...prev,[i]:img}));
+      img.src=`/frames/frame-sq-${i}.png`;
+    });
   },[]);
 
   async function handleInstall(){
@@ -847,13 +889,30 @@ export default function App() {
 
           {/* Background */}
           <div style={{marginBottom:"36px"}}>
-            <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"12px"}}>Background / बैकग्राउंड</label>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
-              {BG_STYLES.map(b=><BgSwatch key={b.id} style={b} selected={bgStyle===b.id} onClick={()=>setBgStyle(b.id)}/>)}
-            </div>
-            <div style={{marginTop:"10px",padding:"10px 12px",background:"rgba(255,200,20,0.04)",border:"1px solid rgba(255,200,20,0.1)",borderRadius:"10px",fontSize:"11px",color:"#2A4A0A",lineHeight:1.5}}>
-              🎨 <strong style={{color:"#4A8A0A"}}>Aipan</strong> — कुमाऊंनी लोक कला · <strong style={{color:"#4A8A0A"}}>Himalaya / Valley / Sunset</strong> — उत्तराखंड दृश्यावली
-            </div>
+            {orientation==="square" ? (
+              <>
+                <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"12px"}}>Frame Design चुनें</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+                  {[1,2,3,4,5].map(i=>(
+                    <div key={i} className="tap" onClick={()=>setSqFrame(i)} style={{borderRadius:"12px",overflow:"hidden",border:`2.5px solid ${sqFrame===i?"#10A87C":"#101E10"}`,cursor:"pointer",position:"relative",boxShadow:sqFrame===i?"0 0 0 2px rgba(16,168,124,0.3)":"none",transition:"all 0.15s"}}>
+                      <img src={`/frames/frame-sq-${i}.png`} alt={`Frame ${i}`} style={{width:"100%",display:"block"}} loading="lazy"/>
+                      {sqFrame===i&&<div style={{position:"absolute",top:"6px",right:"6px",background:"#10A87C",color:"white",fontSize:"10px",fontWeight:"800",width:"20px",height:"20px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>✓</div>}
+                      <div style={{padding:"5px 4px",background:"#0A120A",textAlign:"center",fontSize:"10px",color:sqFrame===i?"#10A87C":"#1A5A1A",fontWeight:"600"}}>Design {i}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:"10px",padding:"10px 12px",background:"rgba(16,168,124,0.04)",border:"1px solid rgba(16,168,124,0.12)",borderRadius:"10px",fontSize:"11px",color:"#1A4A1A",lineHeight:1.5}}>
+                  📸 Photo/Video frame ke center में आएगी · नाम, पद और जिला नीचे overlay होगा
+                </div>
+              </>
+            ) : (
+              <>
+                <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"12px"}}>Background / बैकग्राउंड</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+                  {BG_STYLES.map(b=><BgSwatch key={b.id} style={b} selected={bgStyle===b.id} onClick={()=>setBgStyle(b.id)}/>)}
+                </div>
+              </>
+            )}
           </div>
 
           <button className="tap" onClick={()=>setScreen("camera")} style={{width:"100%",background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"16px",padding:"17px",fontSize:"16px",fontWeight:"700",cursor:"pointer",boxShadow:"0 8px 22px rgba(232,98,42,0.32)"}}>
@@ -863,7 +922,7 @@ export default function App() {
       )}
 
       {/* ── CAMERA ── */}
-      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
+      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} frameImg={orientation==="square"?frameImgs[sqFrame]:null} sqFrame={sqFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
 
       {/* ── PREVIEW ── */}
       {screen==="preview"&&captured&&(
