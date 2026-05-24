@@ -1060,57 +1060,38 @@ export default function App() {
     document.body.appendChild(a);a.click();document.body.removeChild(a);
   }
   async function shareWA(){
-    const who=role?`${name} (${role})`:name;
-    const what=mode==="message"?"Yoga Message":`${asana?.name||"Yoga"}`;
-    const defaultMsg=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n12वाँ अन्तर्राष्ट्रीय योग दिवस 🙏\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath`;
+    const who=role?(name+" ("+role+")"):name;
+    const what=mode==="message"?"Yoga Message":(asana?.name||"Yoga");
+    const defaultMsg="🕉️ "+who+"\n📍 "+district+", Uttarakhand\n🧘 "+what+"\n\n12वाँ अन्तर्राष्ट्रीय योग दिवस 🙏\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath";
     const txt=waMsg.trim()||defaultMsg;
+    let file=null;
     try{
-      let file=null;
       if(captured?.type==="photo"&&captured?.url){
         const res=await fetch(captured.url);
         const blob=await res.blob();
         file=new File([blob],"YogaPath-IDY2026.jpg",{type:"image/jpeg"});
       } else if(captured?.type==="video"&&captured?.blob){
-        const mime=captured.mime||"video/webm";
+        const mime=captured.mime||"video/mp4";
         const ext=mime.includes("mp4")?"mp4":"webm";
-        file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:mime});
+        file=new File([captured.blob],"YogaPath-IDY2026."+ext,{type:mime});
       }
-      if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
-        try{
-          if(captured?.type==="video"){
-            // Video: share file only — no text (WhatsApp handles video+text poorly)
-            await navigator.share({files:[file]});
-          } else {
-            // Photo: share with text
-            await navigator.share({files:[file],text:txt});
-          }
-          return;
-        }catch(e){
-          if(e?.name==="AbortError") return;
-          // Fall through to next method
-        }
-      }
-      // Video fallback: download + open WhatsApp
-      if(captured?.type==="video"&&captured?.blob){
-        const a=document.createElement("a");
-        const ext=captured.mime?.includes("mp4")?"mp4":"webm";
-        a.href=captured.url||URL.createObjectURL(captured.blob);
-        a.download=`YogaPath-IDY2026.${ext}`;
-        document.body.appendChild(a);a.click();document.body.removeChild(a);
-        setTimeout(()=>window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank"),1000);
-        setShareHint(true);
-        return;
-      }
-      if(navigator.share){
-        await navigator.share({title:"YogaPath - IDY 2026",text:txt});
-        return;
-      }
-      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank");
-    }catch(e){
-      if(e?.name!=="AbortError"){
-        window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank");
+    }catch(e){}
+    // Try 1: native share with file (skip canShare - often wrong on Android)
+    if(file&&navigator.share){
+      try{ await navigator.share({files:[file],text:captured?.type==="photo"?txt:""}); return; }catch(e){
+        if(e?.name==="AbortError") return;
+        try{ await navigator.share({files:[file]}); return; }catch(e2){ if(e2?.name==="AbortError") return; }
       }
     }
+    // Try 2: download + WhatsApp text
+    if(file){
+      const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=file.name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setShareHint(true);
+      setTimeout(()=>window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank"),800);
+      return;
+    }
+    window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
   }
   // ── Challenge helpers ──────────────────────────────────────────────────
   function makeCertNum(name,district){
