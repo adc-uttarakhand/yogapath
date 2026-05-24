@@ -82,6 +82,41 @@ const ASANAS = [
   { id:"naukasana",     name:"Naukasana",     sanskrit:"नावकासन",        icon:"⛵", category:"Core",       color:"#0EA5E9", benefits:["Strengthens core","Improves digestion","Tones abs","Builds stamina"],                    description:"Boat Pose — sail with strength" },
   { id:"anulom_vilom",  name:"Anulom Vilom",  sanskrit:"अनुलोम विलोम",   icon:"🌬", category:"Pranayama",  color:"#2DD4BF", benefits:["Calms nervous system","Purifies nadis","Reduces stress","Improves focus"],              description:"Alternate Nostril Breathing — breath of balance" },
 ];
+
+// ─── 21-DAY CHALLENGE DATA ────────────────────────────────────────────────────
+const DAILY_TASKS = [
+  {day:1,  asana:"Tadasana",              sanskrit:"ताडासन",              pranayama:"Anulom Vilom",  mins:10, tip:"सीधे खड़े हों, गहरी सांस लें — यह आसन आपकी नींव है।"},
+  {day:2,  asana:"Vrikshasana",           sanskrit:"वृक्षासन",             pranayama:"Bhramari",      mins:10, tip:"एकाग्रता से दोनों तरफ करें। संतुलन ही योग है।"},
+  {day:3,  asana:"Vajrasana",             sanskrit:"वज्रासन",              pranayama:"Kapalbhati",    mins:12, tip:"भोजन के बाद करें — पाचन तंत्र मजबूत होगा।"},
+  {day:4,  asana:"Balasana",              sanskrit:"बालासन",               pranayama:"Anulom Vilom",  mins:10, tip:"इस आसन में शरीर को पूरी तरह छोड़ दें।"},
+  {day:5,  asana:"Bhujangasana",          sanskrit:"भुजंगासन",             pranayama:"Udgeeth",       mins:12, tip:"रीढ़ की हड्डी मजबूत बनाता है — धीरे-धीरे करें।"},
+  {day:6,  asana:"Trikonasana",           sanskrit:"त्रिकोणासन",           pranayama:"Sheetali",      mins:12, tip:"दोनों तरफ समान समय करें। कूल्हे और रीढ़ खुलेंगे।"},
+  {day:7,  asana:"Shavasana",             sanskrit:"शवासन",                pranayama:"Yoga Nidra",    mins:15, tip:"7 दिन पूरे! शरीर को पूर्ण विश्राम दें — यही असली योग है।"},
+  {day:8,  asana:"Surya Namaskar (3×)",   sanskrit:"सूर्य नमस्कार",        pranayama:"Kapalbhati",    mins:15, tip:"12 चरणों में पूरा शरीर सक्रिय होता है।"},
+  {day:9,  asana:"Padmasana",             sanskrit:"पद्मासन",              pranayama:"Anulom Vilom",  mins:12, tip:"ध्यान के लिए सबसे उत्तम आसन — मन शांत होगा।"},
+  {day:10, asana:"Naukasana",             sanskrit:"नावकासन",              pranayama:"Bhastrika",     mins:12, tip:"10 दिन! आपका Core मजबूत हो रहा है — शाबाश!"},
+  {day:11, asana:"Ustrasana",             sanskrit:"उष्ट्रासन",            pranayama:"Bhramari",      mins:12, tip:"छाती और गले को खोलता है। धीरे-धीरे जाएं।"},
+  {day:12, asana:"Setu Bandhasana",       sanskrit:"सेतु बंधासन",          pranayama:"Sitali",        mins:12, tip:"पीठ दर्द में बहुत लाभकारी — रोज़ करें।"},
+  {day:13, asana:"Ardha Matsyendrasana",  sanskrit:"अर्ध मत्स्येंद्रासन",  pranayama:"Anulom Vilom",  mins:12, tip:"रीढ़ की ट्विस्ट से विषाक्त पदार्थ बाहर निकलते हैं।"},
+  {day:14, asana:"Shavasana + Meditation",sanskrit:"शवासन + ध्यान",        pranayama:"Yoga Nidra",    mins:20, tip:"14 दिन! दो सप्ताह की उपलब्धि सराहनीय है 🌟"},
+  {day:15, asana:"Surya Namaskar (5×)",   sanskrit:"सूर्य नमस्कार",        pranayama:"Kapalbhati",    mins:20, tip:"आज 5 बार करें — आपका शरीर अब तैयार है।"},
+  {day:16, asana:"Vrikshasana (Adv.)",    sanskrit:"वृक्षासन",             pranayama:"Bhramari",      mins:12, tip:"आंखें बंद करके करें — एकाग्रता बढ़ेगी।"},
+  {day:17, asana:"Gomukhasana",           sanskrit:"गोमुखासन",             pranayama:"Ujjayi",        mins:12, tip:"कंधे और कूल्हे दोनों खुलते हैं।"},
+  {day:18, asana:"Mandukasana",           sanskrit:"मंडूकासन",             pranayama:"Kapalbhati",    mins:12, tip:"मधुमेह नियंत्रण में अत्यंत सहायक।"},
+  {day:19, asana:"Sarvangasana",          sanskrit:"सर्वांगासन",           pranayama:"Anulom Vilom",  mins:15, tip:"थायरॉइड और हार्मोन्स के लिए श्रेष्ठ — सावधानी से करें।"},
+  {day:20, asana:"Chakrasana",            sanskrit:"चक्रासन",              pranayama:"Bhastrika",     mins:15, tip:"अंतिम दिन से पहले! पूरी शक्ति लगाएं 💪"},
+  {day:21, asana:"Surya Namaskar (7×)",   sanskrit:"सूर्य नमस्कार",        pranayama:"Full Set",      mins:30, tip:"🎉 21 दिन पूरे! आप सच्चे Yoga Abhyasi हैं। यह आदत जीवनभर रखें।"},
+];
+
+const BADGES = [
+  {id:"starter",   day:1,  emoji:"🌱", title:"Yoga Starter",       titleHi:"योग शुरुआत",      desc:"Your yoga journey begins!"},
+  {id:"warrior",   day:5,  emoji:"⚔️", title:"Yoga Warrior",        titleHi:"योग योद्धा",       desc:"5 days without missing!"},
+  {id:"week",      day:7,  emoji:"🏅", title:"Week Champion",       titleHi:"सप्ताह विजेता",    desc:"First week completed!"},
+  {id:"prana",     day:10, emoji:"🌬️", title:"Pranayama Expert",    titleHi:"प्राणायाम विशेषज्ञ",desc:"10 days of breath mastery!"},
+  {id:"fortnight", day:14, emoji:"🧘", title:"Fortnight Yogi",      titleHi:"पखवाड़े का योगी",  desc:"Two weeks strong!"},
+  {id:"abhyasi",   day:21, emoji:"🎓", title:"Certified Yoga Abhyasi",titleHi:"प्रमाणित योग अभ्यासी",desc:"21-day challenge complete!"},
+];
+
 const CATEGORIES = ["All","Standing","Balance","Seated","Backbend","Flow","Pranayama","Restorative","Core","Relaxation"];
 
 // ─── UTILS ────────────────────────────────────────────────
@@ -250,6 +285,104 @@ function drawBackground(ctx, W, H, style) {
 }
 
 // ─── MAIN FRAME DRAWING ───────────────────────────────────
+// ─── CERTIFICATE GENERATOR ─────────────────────────────────────────────────
+function drawCertificate(canvas, {name, district, days, completedDate, certNum}) {
+  const ctx=canvas.getContext("2d");
+  const W=1200,H=850; canvas.width=W; canvas.height=H;
+  const GOLD="#C8920A", MAROON="#8B1A1A", SAFFRON="#E8622A", DARK="#1A0A00";
+
+  // Background
+  ctx.fillStyle="#FFFDF5"; ctx.fillRect(0,0,W,H);
+
+  // Outer border
+  ctx.strokeStyle=GOLD; ctx.lineWidth=8;
+  ctx.strokeRect(12,12,W-24,H-24);
+  ctx.strokeStyle=MAROON; ctx.lineWidth=2;
+  ctx.strokeRect(22,22,W-44,H-44);
+  ctx.strokeStyle=GOLD; ctx.lineWidth=1;
+  ctx.strokeRect(30,30,W-60,H-60);
+
+  // Corner diamonds
+  [[50,50],[W-50,50],[50,H-50],[W-50,H-50]].forEach(([cx,cy])=>{
+    ctx.fillStyle=GOLD;
+    ctx.beginPath(); ctx.moveTo(cx,cy-14); ctx.lineTo(cx+14,cy); ctx.lineTo(cx,cy+14); ctx.lineTo(cx-14,cy); ctx.closePath(); ctx.fill();
+  });
+  // Corner lotus dots
+  [[50,50],[W-50,50],[50,H-50],[W-50,H-50]].forEach(([cx,cy])=>{
+    for(let i=0;i<8;i++){const a=i*Math.PI/4; ctx.beginPath(); ctx.arc(cx+Math.cos(a)*22,cy+Math.sin(a)*22,3,0,Math.PI*2); ctx.fillStyle=SAFFRON+"88"; ctx.fill();}
+  });
+
+  // Header
+  ctx.textAlign="center";
+  ctx.font="bold 15px Arial,sans-serif"; ctx.fillStyle=MAROON;
+  ctx.fillText("DEPARTMENT OF AYURVEDIC & UNANI SERVICES, GOVERNMENT OF UTTARAKHAND",W/2,72);
+  ctx.font="13px Arial,sans-serif"; ctx.fillStyle=GOLD;
+  ctx.fillText("National AYUSH Mission, Uttarakhand  |  YogaPath Uttarakhand",W/2,92);
+
+  ctx.strokeStyle=GOLD; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(50,106); ctx.lineTo(W-50,106); ctx.stroke();
+
+  // Title
+  ctx.font="bold 48px Georgia,serif"; ctx.fillStyle=DARK;
+  ctx.fillText("Certificate of Achievement",W/2,170);
+  ctx.font="22px Georgia,serif"; ctx.fillStyle=SAFFRON;
+  ctx.fillText("प्रमाण पत्र",W/2,205);
+
+  // Body
+  ctx.font="16px Arial,sans-serif"; ctx.fillStyle=DARK+"CC";
+  ctx.fillText("This is to certify that",W/2,255);
+
+  ctx.font="bold 52px Georgia,serif"; ctx.fillStyle=MAROON;
+  ctx.fillText(name,W/2,325);
+  const nw=ctx.measureText(name).width;
+  ctx.strokeStyle=SAFFRON; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(W/2-nw/2,337); ctx.lineTo(W/2+nw/2,337); ctx.stroke();
+
+  ctx.font="15px Arial,sans-serif"; ctx.fillStyle=DARK+"AA";
+  ctx.fillText("District: "+district,W/2,365);
+
+  ctx.font="17px Arial,sans-serif"; ctx.fillStyle=DARK;
+  ctx.fillText("has successfully completed the",W/2,405);
+
+  ctx.font="bold 38px Georgia,serif"; ctx.fillStyle=SAFFRON;
+  ctx.fillText(days+"-Day Yoga Challenge",W/2,452);
+
+  ctx.font="15px Arial,sans-serif"; ctx.fillStyle=DARK+"BB";
+  ctx.fillText("International Day of Yoga 2026  |  YogaPath Uttarakhand",W/2,485);
+
+  // Achievement badge
+  ctx.font="bold 18px Arial,sans-serif"; ctx.fillStyle=GOLD;
+  ctx.fillText("★  Certified Yoga Abhyasi  ★",W/2,525);
+
+  // Divider
+  ctx.strokeStyle=GOLD; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(50,545); ctx.lineTo(W-50,545); ctx.stroke();
+
+  // Info row
+  ctx.font="13px Arial,sans-serif"; ctx.fillStyle=DARK+"99";
+  ctx.textAlign="left";  ctx.fillText("Date of Completion: "+completedDate, 70, 575);
+  ctx.textAlign="right"; ctx.fillText("Certificate No: "+certNum, W-70, 575);
+  ctx.textAlign="center"; ctx.fillText("Challenge Duration: "+days+" Days", W/2, 575);
+
+  // Seal / emblem only — no signature lines
+  const sigY=660;
+  ctx.beginPath(); ctx.arc(W/2,sigY,60,0,Math.PI*2);
+  ctx.strokeStyle=GOLD; ctx.lineWidth=3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,sigY,52,0,Math.PI*2);
+  ctx.strokeStyle=MAROON+"55"; ctx.lineWidth=1; ctx.stroke();
+  ctx.font="bold 16px Arial,sans-serif"; ctx.fillStyle=MAROON; ctx.textAlign="center";
+  ctx.fillText("AYUSH",W/2,sigY-8);
+  ctx.fillText("UTTARAKHAND",W/2,sigY+12);
+  ctx.font="11px Arial,sans-serif"; ctx.fillStyle=GOLD;
+  ctx.fillText("GOVT. OF UTTARAKHAND",W/2,sigY+30);
+
+  // Footer
+  ctx.font="11px Arial,sans-serif"; ctx.fillStyle=DARK+"55";
+  ctx.fillText("This certificate is digitally generated and authenticated by YogaPath Uttarakhand.",W/2,H-42);
+  ctx.fillText("Verify at yogapath.uk.gov.in  |  Certificate ID: "+certNum,W/2,H-24);
+}
+
+
 function drawSquareFrame(canvas, source, frameImg, p) {
   const ctx=canvas.getContext("2d");
   const FW=1080, FH=1080, STRIP=88;
@@ -545,134 +678,291 @@ select.inp option{background:#13131E;color:#fff;}
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
 function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, lsFrame, ptFrame, onCapture, onBack }) {
-  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null), sqImgRef=useRef(null), lsImgRef=useRef(null), ptImgRef=useRef(null);
-  const [camState,setCamState]=useState("idle");
-  // Load square PNG frame directly inside CameraScreen
-  useEffect(()=>{
-    if(orientation==="square"&&sqFrame){
-      const img=new Image();
-      img.onload=()=>{ sqImgRef.current=img; };
-      img.onerror=()=>{ sqImgRef.current=null; };
-      img.src=`/frames/frame-sq-${sqFrame}.png`;
-    } else { sqImgRef.current=null; }
-  },[orientation,sqFrame]);
+  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null),
+        recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null),
+        sqImgRef=useRef(null), lsImgRef=useRef(null), ptImgRef=useRef(null),
+        galleryRef=useRef(null), galleryImgRef=useRef(null);
 
-  useEffect(()=>{
-    if(orientation==="portrait"&&ptFrame){
-      const img=new Image();
-      img.onload=()=>{ ptImgRef.current=img; };
-      img.onerror=()=>{ ptImgRef.current=null; };
-      img.src=`/frames/frame-pt-${ptFrame}.png`;
-    } else if(orientation!=="portrait") { ptImgRef.current=null; }
-  },[orientation,ptFrame]);
-
-  useEffect(()=>{
-    if(orientation==="landscape"&&lsFrame){
-      const img=new Image();
-      img.onload=()=>{ lsImgRef.current=img; };
-      img.onerror=()=>{ lsImgRef.current=null; };
-      img.src=`/frames/frame-ls-${lsFrame}.png`;
-    } else { lsImgRef.current=null; }
-  },[orientation,lsFrame]);
-  const [facing,setFacing]=useState("user");
+  const [facing,setFacing]=useState("environment");
+  const [camState,setCamState]=useState("idle");   // idle|previewing|recording|processing
   const [secs,setSecs]=useState(0);
   const [err,setErr]=useState(null);
+  const [timer,setTimer]=useState(0);              // 0|5|10|20 sec
+  const [countdown,setCountdown]=useState(null);   // live countdown number
+  const [galleryMode,setGalleryMode]=useState(false);
+
   const isPhoto=mode==="photo";
   const ori=ORIENTATIONS.find(o=>o.id===orientation)||ORIENTATIONS[0];
   const CW=ori.w, CH=ori.h;
 
+  // ── Frame loading ──
+  useEffect(()=>{
+    if(orientation==="square"&&sqFrame){
+      const img=new Image(); img.onload=()=>{sqImgRef.current=img;}; img.onerror=()=>{sqImgRef.current=null;};
+      img.src=`/frames/frame-sq-${sqFrame}.png`;
+    } else { sqImgRef.current=null; }
+  },[orientation,sqFrame]);
+  useEffect(()=>{
+    if(orientation==="portrait"&&ptFrame){
+      const img=new Image(); img.onload=()=>{ptImgRef.current=img;}; img.onerror=()=>{ptImgRef.current=null;};
+      img.src=`/frames/frame-pt-${ptFrame}.png`;
+    } else if(orientation!=="portrait"){ ptImgRef.current=null; }
+  },[orientation,ptFrame]);
+  useEffect(()=>{
+    if(orientation==="landscape"&&lsFrame){
+      const img=new Image(); img.onload=()=>{lsImgRef.current=img;}; img.onerror=()=>{lsImgRef.current=null;};
+      img.src=`/frames/frame-ls-${lsFrame}.png`;
+    } else { lsImgRef.current=null; }
+  },[orientation,lsFrame]);
+
+  // ── Draw loop ──
   const drawLoop=useCallback(()=>{
     if(!canvasRef.current||!videoRef.current) return;
     const cv=canvasRef.current;
-    if(cv.width!==CW) cv.width=CW;
-    if(cv.height!==CH) cv.height=CH;
-    const sqImg=sqImgRef.current;
-    const lsImg=lsImgRef.current;
+    const src=galleryMode&&galleryImgRef.current ? galleryImgRef.current : videoRef.current;
+    const sqImg=sqImgRef.current, lsImg=lsImgRef.current;
     if(orientation==="square"&&sqImg){
-        if(cv.width!==1080) cv.width=1080;
-        if(cv.height!==1168) cv.height=1168;
-        drawSquareFrame(cv,videoRef.current,sqImg,{name,role,district,mode,asana,msg,sqFrame});
-      } else if(orientation==="portrait"&&ptImgRef.current){
-        if(cv.width!==720) cv.width=720;
-        if(cv.height!==1368) cv.height=1368;
-        drawPortraitFrame(cv,videoRef.current,ptImgRef.current,{name,role,district,mode,asana,msg});
-      } else if(orientation==="landscape"&&lsImg){
-        if(cv.width!==1280) cv.width=1280;
-        if(cv.height!==728) cv.height=728;
-        drawLandscapeFrame(cv,videoRef.current,lsImg,{name,role,district,mode,asana,msg});
-      } else {
-        if(cv.width!==CW) cv.width=CW;
-        if(cv.height!==CH) cv.height=CH;
-        drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
-      }
-    animRef.current=requestAnimationFrame(drawLoop);
-  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,lsFrame,ptFrame,CW,CH]);
+      if(cv.width!==1080)cv.width=1080; if(cv.height!==1168)cv.height=1168;
+      drawSquareFrame(cv,src,sqImg,{name,role,district,mode,asana,msg,sqFrame});
+    } else if(orientation==="portrait"&&ptImgRef.current){
+      if(cv.width!==720)cv.width=720; if(cv.height!==1368)cv.height=1368;
+      drawPortraitFrame(cv,src,ptImgRef.current,{name,role,district,mode,asana,msg});
+    } else if(orientation==="landscape"&&lsImg){
+      if(cv.width!==1280)cv.width=1280; if(cv.height!==728)cv.height=728;
+      drawLandscapeFrame(cv,src,lsImg,{name,role,district,mode,asana,msg});
+    } else {
+      if(cv.width!==CW)cv.width=CW; if(cv.height!==CH)cv.height=CH;
+      drawAYUSHFrame(cv,src,{asana,name,district,role,mode,msg,bgStyle,orientation});
+    }
+    if(!galleryMode) animRef.current=requestAnimationFrame(drawLoop);
+  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,lsFrame,ptFrame,CW,CH,galleryMode]);
 
+  // ── Camera start — FIX: standard constraints, then try zoom=min ──
   async function startCam(f=facing){
+    setGalleryMode(false); galleryImgRef.current=null;
     try{
       if(streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop());
-      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:f,width:{ideal:CW},height:{ideal:CH}},audio:!isPhoto});
-      streamRef.current=s; videoRef.current.srcObject=s; await videoRef.current.play();
-      cancelAnimationFrame(animRef.current); drawLoop(); setCamState("previewing"); setErr(null);
+      const s=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:f},width:{ideal:1280,max:1920},height:{ideal:720,max:1080}},
+        audio:!isPhoto
+      });
+      // Try to set minimum zoom (1x)
+      const vt=s.getVideoTracks()[0];
+      if(vt){
+        const cap=vt.getCapabilities();
+        if(cap.zoom) await vt.applyConstraints({advanced:[{zoom:cap.zoom.min}]}).catch(()=>{});
+      }
+      streamRef.current=s; videoRef.current.srcObject=s;
+      await videoRef.current.play();
+      cancelAnimationFrame(animRef.current); drawLoop();
+      setCamState("previewing"); setErr(null);
     }catch(e){setErr(e.name==="NotAllowedError"?"Camera permission denied. Please allow access.":e.message);}
   }
-  function stopCam(){cancelAnimationFrame(animRef.current);if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}if(videoRef.current) videoRef.current.srcObject=null;}
+
+  function stopCam(){
+    cancelAnimationFrame(animRef.current);
+    if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
+    if(videoRef.current) videoRef.current.srcObject=null;
+  }
   useEffect(()=>()=>stopCam(),[]);
+
   function flip(){const f=facing==="user"?"environment":"user";setFacing(f);startCam(f);}
+
+  // ── Gallery pick ──
+  function handleGallery(e){
+    const file=e.target.files?.[0]; if(!file) return;
+    const url=URL.createObjectURL(file);
+    if(file.type.startsWith("image/")){
+      const img=new Image();
+      img.onload=()=>{
+        galleryImgRef.current=img; setGalleryMode(true);
+        // Render once on canvas, then trigger capture immediately
+        cancelAnimationFrame(animRef.current);
+        drawLoop();
+        setCamState("previewing");
+      };
+      img.src=url;
+    } else if(file.type.startsWith("video/")){
+      // For gallery video: play in video element and draw frames
+      const vid=videoRef.current;
+      vid.src=url; vid.muted=true; vid.loop=true;
+      vid.play().then(()=>{
+        galleryImgRef.current=null; setGalleryMode(false);
+        cancelAnimationFrame(animRef.current); drawLoop();
+        setCamState("previewing");
+      });
+    }
+  }
+
+  // ── Capture with optional timer ──
   function capturePhoto(){const url=canvasRef.current.toDataURL("image/jpeg",0.94);stopCam();onCapture({type:"photo",url});}
   function startRec(){
     chunksRef.current=[];
     const cs=canvasRef.current.captureStream(30);
     (streamRef.current?.getAudioTracks()||[]).forEach(t=>cs.addTrack(t));
-    const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"].find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch{return false}})||"video/webm";
+    const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"";
     recRef.current=new MediaRecorder(cs,{mimeType:mime});
     recRef.current.ondataavailable=e=>{if(e.data.size>0) chunksRef.current.push(e.data);};
-    recRef.current.onstop=()=>{const blob=new Blob(chunksRef.current,{type:mime});stopCam();onCapture({type:"video",blob,url:URL.createObjectURL(blob),mime});};
+    recRef.current.onstop=()=>{const blob=new Blob(chunksRef.current,{type:mime});stopCam();onCapture({type:"video",blob,mime});};
     recRef.current.start(200); setCamState("recording"); setSecs(0);
   }
   function stopRec(){recRef.current?.stop();setCamState("processing");}
-  useEffect(()=>{if(camState!=="recording") return;const t=setInterval(()=>setSecs(s=>s+1),1000);return()=>clearInterval(t);},[camState]);
+
+  function triggerCapture(){
+    if(timer===0){ isPhoto?capturePhoto():startRec(); return; }
+    let c=timer; setCountdown(c);
+    const iv=setInterval(()=>{
+      c--;
+      if(c<=0){ clearInterval(iv); setCountdown(null); isPhoto?capturePhoto():startRec(); }
+      else setCountdown(c);
+    },1000);
+  }
+
+  useEffect(()=>{if(camState!=="recording")return;const t=setInterval(()=>setSecs(s=>s+1),1000);return()=>clearInterval(t);},[camState]);
   const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const modeObj=MODES.find(m=>m.id===mode);
   const isLS=orientation==="landscape";
 
   return (
     <div style={{background:"#000",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:"'Sora',system-ui,sans-serif"}}>
+      {/* Top bar */}
       <div style={{padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <button onClick={()=>{stopCam();onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"8px 14px",borderRadius:"10px",cursor:"pointer",fontSize:"18px"}}>←</button>
+        <button onClick={()=>{stopCam();onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"8px 14px",borderRadius:"10px",cursor:"pointer",fontSize:"16px"}}>←</button>
         <div style={{color:"white",fontSize:"13px",fontWeight:"600",display:"flex",alignItems:"center",gap:"6px"}}>
           <span>{modeObj?.icon}</span><span>{modeObj?.title}</span>
           <span style={{color:"#555",fontSize:"11px"}}>· {ori.label}</span>
-          {bgStyle!=="dark"&&<span style={{color:"#555",fontSize:"11px"}}>· {BG_STYLES.find(b=>b.id===bgStyle)?.labelHi}</span>}
         </div>
-        {(camState==="previewing"||camState==="recording")
-          ? <button onClick={flip} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"8px 12px",borderRadius:"10px",cursor:"pointer",fontSize:"20px"}}>⇄</button>
-          : <div style={{width:"42px"}}/>}
+        <div style={{width:"42px"}}/>
       </div>
 
-      {isLS&&<div style={{padding:"4px 16px",background:"rgba(255,160,20,0.12)",borderRadius:"8px",margin:"0 16px 6px",fontSize:"11px",color:"rgba(255,160,20,0.8)",textAlign:"center"}}>📐 Landscape mode — rotate phone sideways for best results</div>}
+      {isLS&&<div style={{padding:"4px 16px",background:"rgba(255,160,20,0.12)",borderRadius:"8px",margin:"0 16px 6px",fontSize:"11px",color:"#FFA014",textAlign:"center"}}>
+        📱 Landscape के लिए phone को sideways घुमाएं
+      </div>}
 
+      {/* Canvas preview */}
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0 4px"}}>
         <video ref={videoRef} style={{display:"none"}} muted playsInline autoPlay/>
-        <canvas ref={canvasRef} width={CW} height={CH} style={{width:"100%",maxHeight:"calc(100vh - 190px)",objectFit:"contain",display:"block",borderRadius:"10px"}}/>
-        {camState==="idle"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center",color:"#555"}}><div style={{fontSize:"42px",marginBottom:"10px"}}>📷</div><div style={{fontSize:"13px"}}>Tap below to start</div></div></div>}
-        {camState==="recording"&&<div style={{position:"absolute",top:"16px",left:"50%",transform:"translateX(-50%)",background:"rgba(220,38,38,0.88)",color:"white",padding:"5px 14px",borderRadius:"20px",fontSize:"13px",fontWeight:"700",display:"flex",alignItems:"center",gap:"7px"}}><div style={{width:"7px",height:"7px",borderRadius:"50%",background:"#FCA5A5"}}/>REC {fmt(secs)}</div>}
-        {camState==="processing"&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"white",textAlign:"center"}}><div style={{fontSize:"34px",marginBottom:"8px"}}>⏳</div><div style={{fontSize:"14px"}}>Processing...</div></div></div>}
+        <canvas ref={canvasRef} width={CW} height={CH} style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"10px"}}/>
+
+        {/* Countdown overlay */}
+        {countdown!==null&&(
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.45)",borderRadius:"10px"}}>
+            <div style={{fontSize:"96px",fontWeight:"900",color:"#E8622A",lineHeight:1,textShadow:"0 0 30px rgba(232,98,42,0.6)"}}>{countdown}</div>
+          </div>
+        )}
+        {camState==="idle"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.5)",borderRadius:"10px"}}>
+          <div style={{textAlign:"center",color:"white"}}>
+            <div style={{fontSize:"40px",marginBottom:"8px"}}>📷</div>
+            <div style={{fontSize:"13px",opacity:0.6}}>Camera start करें या Gallery से चुनें</div>
+          </div>
+        </div>}
+        {camState==="recording"&&<div style={{position:"absolute",top:"14px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.75)",padding:"5px 14px",borderRadius:"20px",display:"flex",alignItems:"center",gap:"6px"}}>
+          <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"#EF4444",animation:"pulse 1s infinite"}}/>
+          <span style={{color:"white",fontSize:"13px",fontWeight:"600"}}>{fmt(secs)}</span>
+        </div>}
+        {camState==="processing"&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"10px"}}>
+          <div style={{textAlign:"center",color:"white"}}><div style={{fontSize:"32px"}}>⏳</div><div style={{fontSize:"13px",marginTop:"8px"}}>Processing...</div></div>
+        </div>}
       </div>
 
-      <div style={{padding:"14px 20px 28px",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",minHeight:"95px"}}>
-        {err&&<div style={{color:"#FCA5A5",fontSize:"12px",textAlign:"center",padding:"8px 14px",background:"rgba(239,68,68,0.1)",borderRadius:"10px",maxWidth:"290px"}}>{err}</div>}
-        {camState==="idle"&&<button onClick={()=>startCam()} style={{background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"14px",padding:"14px 36px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 5px 18px rgba(232,98,42,0.38)"}}>Start Camera</button>}
-        {camState==="previewing"&&isPhoto&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}><button onClick={capturePhoto} style={{width:"74px",height:"74px",borderRadius:"50%",background:"white",border:"6px solid rgba(255,255,255,0.28)",cursor:"pointer",fontSize:"26px",display:"flex",alignItems:"center",justifyContent:"center"}}>📸</button><div style={{color:"#444",fontSize:"11px"}}>Tap to capture</div></div>}
-        {camState==="previewing"&&!isPhoto&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}><button onClick={startRec} style={{width:"74px",height:"74px",borderRadius:"50%",background:"#DC2626",border:"6px solid rgba(220,38,38,0.33)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:"27px",height:"27px",borderRadius:"50%",background:"white"}}/></button><div style={{color:"#555",fontSize:"11px"}}>Tap to record</div></div>}
-        {camState==="recording"&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}><button onClick={stopRec} style={{width:"74px",height:"74px",borderRadius:"50%",background:"#DC2626",border:"6px solid rgba(220,38,38,0.33)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:"25px",height:"25px",borderRadius:"4px",background:"white"}}/></button><div style={{color:"#F87171",fontSize:"11px",fontWeight:"600"}}>Tap to stop</div></div>}
-        {camState==="previewing"&&<div style={{color:"#222",fontSize:"10px",textAlign:"center"}}>AYUSH frame is live • baked directly into your {isPhoto?"photo":"video"}</div>}
+      {/* Bottom controls */}
+      <div style={{padding:"14px 20px 32px",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px"}}>
+        {err&&<div style={{color:"#FCA5A5",fontSize:"12px",textAlign:"center",padding:"8px 14px",background:"rgba(239,68,68,0.1)",borderRadius:"8px",width:"100%"}}>{err}</div>}
+
+        {/* Timer selector */}
+        {(camState==="previewing")&&(
+          <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"6px 10px"}}>
+            <span style={{color:"rgba(255,255,255,0.45)",fontSize:"11px",fontWeight:"600",marginRight:"2px"}}>⏱ Timer:</span>
+            {[0,5,10,20].map(t=>(
+              <button key={t} onClick={()=>setTimer(t)}
+                style={{background:timer===t?"#E8622A":"transparent",color:timer===t?"white":"rgba(255,255,255,0.45)",border:timer===t?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:"8px",padding:"4px 10px",fontSize:"11px",fontWeight:"600",cursor:"pointer"}}>
+                {t===0?"OFF":t+"s"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Main action row: Gallery | Capture | Flip */}
+        {camState==="idle"&&(
+          <div style={{display:"flex",gap:"12px",alignItems:"center",justifyContent:"center",width:"100%"}}>
+            {/* Gallery button */}
+            <button onClick={()=>galleryRef.current.click()}
+              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              🖼
+            </button>
+            {/* Camera start */}
+            <button onClick={()=>startCam()}
+              style={{width:"68px",height:"68px",borderRadius:"50%",background:"#E8622A",border:"4px solid rgba(255,255,255,0.25)",color:"white",fontSize:"28px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(232,98,42,0.5)"}}>
+              📷
+            </button>
+            {/* Flip placeholder */}
+            <div style={{width:"52px",height:"52px"}}/>
+          </div>
+        )}
+
+        {camState==="previewing"&&isPhoto&&(
+          <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
+            {/* Gallery */}
+            <button onClick={()=>galleryRef.current.click()}
+              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              🖼
+            </button>
+            {/* Capture */}
+            <button onClick={triggerCapture} disabled={countdown!==null}
+              style={{width:"72px",height:"72px",borderRadius:"50%",background:countdown!==null?"#555":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",boxShadow:"0 4px 18px rgba(232,98,42,0.5)",transition:"transform 0.1s"}}/>
+            {/* Flip */}
+            <button onClick={flip}
+              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              🔄
+            </button>
+          </div>
+        )}
+
+        {camState==="previewing"&&!isPhoto&&(
+          <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
+            {/* Gallery */}
+            <button onClick={()=>galleryRef.current.click()}
+              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              🖼
+            </button>
+            {/* Record */}
+            <button onClick={()=>{countdown!==null?null:triggerCapture()}} disabled={countdown!==null}
+              style={{width:"72px",height:"72px",borderRadius:"50%",background:countdown!==null?"#555":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(232,98,42,0.4)"}}>
+              <div style={{width:"24px",height:"24px",borderRadius:"50%",background:"white"}}/>
+            </button>
+            {/* Flip */}
+            <button onClick={flip}
+              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              🔄
+            </button>
+          </div>
+        )}
+
+        {camState==="recording"&&(
+          <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
+            <div style={{width:"52px",height:"52px"}}/>
+            {/* Stop */}
+            <button onClick={stopRec}
+              style={{width:"72px",height:"72px",borderRadius:"50%",background:"#EF4444",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(239,68,68,0.5)"}}>
+              <div style={{width:"22px",height:"22px",borderRadius:"4px",background:"white"}}/>
+            </button>
+            {/* Flip during recording */}
+            <div style={{width:"52px",height:"52px"}}/>
+          </div>
+        )}
+
+        {camState==="previewing"&&<div style={{color:"rgba(255,255,255,0.2)",fontSize:"10px",textAlign:"center"}}>
+          AYUSH frame is live · below button = capture
+        </div>}
+
+        {/* Hidden file input */}
+        <input ref={galleryRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleGallery}/>
       </div>
     </div>
   );
 }
 
-// ─── BG SWATCH COMPONENT ─────────────────────────────────
+
 function BgSwatch({ style, selected, onClick }) {
   const isGrad = style.thumb.startsWith("linear");
   return (
@@ -708,6 +998,9 @@ export default function App() {
   const [sqFrame,setSqFrame]=useState(1);
   const [lsFrame,setLsFrame]=useState(1);
   const [ptFrame,setPtFrame]=useState(1);
+  const [challenge,setChallenge]=useState(null);  // {days,startDate,done:[],badges:[],certNum}
+  const [certUrl,setCertUrl]=useState(null);
+  const certCanvasRef=useRef(null);
   const [installPrompt,setInstallPrompt]=useState(null);
   const [isInstalled,setIsInstalled]=useState(false);
   const [isIOS,setIsIOS]=useState(false);
@@ -750,7 +1043,96 @@ export default function App() {
   useEffect(()=>{ loadCommunity(); },[]);
 
   function download(){if(!captured) return;const a=document.createElement("a");a.href=captured.url;a.download=captured.type==="photo"?`yoga-frame-${Date.now()}.jpg`:`yoga-video-${Date.now()}.webm`;a.click();}
-  function shareWA(){const who=role?`${name} (${role})`:name;const what=mode==="message"?"Yoga Message":`${asana?.name}`;const t=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n"${msg}"\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,"_blank");}
+  function async function shareWA(){
+    const who=role?`${name} (${role})`:name;
+    const what=mode==="message"?"Yoga Message":`${asana?.name||"Yoga"}`;
+    const txt=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath`;
+    try{
+      let file=null;
+      if(captured?.type==="photo"&&captured?.url){
+        const res=await fetch(captured.url);
+        const blob=await res.blob();
+        file=new File([blob],"YogaPath-IDY2026.jpg",{type:"image/jpeg"});
+      } else if(captured?.type==="video"&&captured?.blob){
+        const ext=captured.mime?.includes("mp4")?"mp4":"webm";
+        file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:captured.mime||"video/webm"});
+      }
+      if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],text:txt});
+        return;
+      }
+      // Fallback: if file share not supported, try share with just text+title
+      if(navigator.share){
+        await navigator.share({title:"YogaPath - IDY 2026",text:txt});
+        return;
+      }
+      // Last fallback: WhatsApp URL (text only)
+      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank");
+    }catch(e){
+      if(e?.name!=="AbortError"){
+        window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank");
+      }
+    }
+  }
+  // ── Challenge helpers ──────────────────────────────────────────────────
+  function makeCertNum(name,district){
+    let h=0; const s=name+district+Date.now();
+    for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}
+    return "YP"+(Math.abs(h)%900000+100000);
+  }
+
+  async function loadChallenge(nm,dist){
+    const key=`challenge_${(nm||"").replace(/\s/g,"_")}_${(dist||"").replace(/\s/g,"_")}`;
+    try{const r=await window.storage.get(key);if(r?.value) setChallenge(JSON.parse(r.value));}catch{}
+  }
+
+  async function saveChallenge(data,nm,dist){
+    const key=`challenge_${(nm||"").replace(/\s/g,"_")}_${(dist||"").replace(/\s/g,"_")}`;
+    try{await window.storage.set(key,JSON.stringify(data));}catch{}
+    // Sync to Supabase
+    if(SUPABASE_URL.includes(".supabase.co")){
+      try{
+        await fetch(`${SUPABASE_URL}/rest/v1/yoga_challenge`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"resolution=merge-duplicates"},
+          body:JSON.stringify({user_key:key,name:nm,district:dist,challenge_days:data.days,completed_days:data.done,badges:data.badges,last_checkin:data.lastCheckin,cert_generated:data.certGenerated||false})
+        });
+      }catch{}
+    }
+  }
+
+  function startChallenge(days){
+    const data={days,startDate:new Date().toISOString().split("T")[0],done:[],badges:["starter"],lastCheckin:null,certGenerated:false,certNum:makeCertNum(name,district)};
+    setChallenge(data); saveChallenge(data,name,district); setScreen("tracker");
+  }
+
+  async function markDone(){
+    if(!challenge) return;
+    const today=new Date().toISOString().split("T")[0];
+    if(challenge.lastCheckin===today) return; // already done
+    const day=challenge.done.length+1;
+    const newDone=[...challenge.done,day];
+    // Check badges
+    const earned=[...challenge.badges];
+    BADGES.forEach(b=>{ if(b.day===day&&!earned.includes(b.id)) earned.push(b.id); });
+    const certDone=(day>=challenge.days);
+    const updated={...challenge,done:newDone,badges:earned,lastCheckin:today,certGenerated:certDone};
+    setChallenge(updated); await saveChallenge(updated,name,district);
+    if(certDone) setScreen("certificate");
+  }
+
+  function generateCert(){
+    if(!certCanvasRef.current||!challenge) return;
+    const today=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+    drawCertificate(certCanvasRef.current,{name,district,days:challenge.days,completedDate:today,certNum:challenge.certNum});
+    setCertUrl(certCanvasRef.current.toDataURL("image/jpeg",0.95));
+  }
+
+  function downloadCert(){
+    if(!certUrl) return;
+    const a=document.createElement("a"); a.href=certUrl; a.download=`YogaPath-Certificate-${name.replace(/\s/g,"-")}.jpg`; a.click();
+  }
+
   // Auto-called when photo captured or video recorded
   async function autoLog() {
     if(joined) return;
@@ -762,6 +1144,7 @@ export default function App() {
   }
 
   async function joinWall(){
+    await loadChallenge(name,district);
     const ok = await logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
     setJoined(true);
     if(ok) { await loadCommunity(); }
@@ -836,10 +1219,10 @@ export default function App() {
                   <div style={{fontWeight:"700",fontSize:"14px",color:"#fff",marginBottom:"3px"}}>District Wall</div>
                   <div style={{color:"rgba(16,168,124,0.8)",fontSize:"11px",fontWeight:"600"}}>{community.length} entries</div>
                 </div>
-                <div style={{flex:1,background:"#13131E",border:"1px solid rgba(255,255,255,0.05)",borderRadius:"16px",padding:"16px",opacity:0.5}}>
-                  <div style={{fontSize:"24px",marginBottom:"8px"}}>📜</div>
-                  <div style={{fontWeight:"700",fontSize:"14px",color:"#fff",marginBottom:"3px"}}>Certificate</div>
-                  <div style={{fontSize:"10px",color:"rgba(255,255,255,0.35)"}}>Coming soon</div>
+                <div className="tap" onClick={()=>name?setScreen("challenge"):setScreen("onboard")} style={{flex:1,background:"#13131E",border:"1px solid rgba(139,92,246,0.25)",borderRadius:"16px",padding:"16px",cursor:"pointer"}}>
+                  <div style={{fontSize:"24px",marginBottom:"8px"}}>🔥</div>
+                  <div style={{fontWeight:"700",fontSize:"14px",color:"#fff",marginBottom:"3px"}}>21-Day Streak</div>
+                  <div style={{color:"rgba(139,92,246,0.8)",fontSize:"11px",fontWeight:"600"}}>{challenge?`Day ${challenge.done.length}/${challenge.days}`:"Start Challenge"}</div>
                 </div>
               </div>
             </div>
@@ -1086,15 +1469,11 @@ export default function App() {
             <button className="tap" onClick={download} style={{background:"linear-gradient(135deg,#059669,#047857)",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"700",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",boxShadow:"0 3px 14px rgba(5,150,105,0.28)"}}>⬇ Download</button>
             <button className="tap" onClick={shareWA} style={{background:"linear-gradient(135deg,#25D366,#1DAB52)",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"700",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",boxShadow:"0 3px 14px rgba(37,211,102,0.28)"}}>📤 WhatsApp</button>
           </div>
-          {joined&&(
-            <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.2)",borderRadius:"12px",padding:"12px 16px",marginBottom:"10px"}}>
-              <span style={{fontSize:"18px"}}>✅</span>
-              <span style={{color:"#10A87C",fontSize:"14px",fontWeight:"600"}}>District Wall में जोड़ा गया</span>
-            </div>
-          )}
-          <button onClick={()=>setScreen("community")} style={{width:"100%",background:"transparent",color:"rgba(255,255,255,0.3)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"13px",padding:"12px",fontSize:"13px",cursor:"pointer"}}>
-            View District Wall →
-          </button>
+                    {!joined
+            ? <button className="tap" onClick={joinWall} style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginBottom:"10px",boxShadow:"0 6px 20px rgba(232,98,42,0.3)"}}>🌟 Add to District Wall →</button>
+            : <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.2)",borderRadius:"12px",padding:"12px 16px",marginBottom:"10px"}}><span style={{fontSize:"18px"}}>✅</span><span style={{color:"#10A87C",fontSize:"14px",fontWeight:"600"}}>District Wall में जोड़ा गया</span></div>
+          }
+          <button onClick={()=>setScreen("community")} style={{width:"100%",background:"transparent",color:"rgba(255,255,255,0.35)",border:"none",padding:"10px",fontSize:"12px",cursor:"pointer"}}>View District Wall →</button>
         </div>
       )}
 
@@ -1161,6 +1540,156 @@ export default function App() {
           </div>
         );
       })()}
+      {/* ── CHALLENGE SELECTOR ── */}
+      {screen==="challenge"&&(
+        <div className="page fade" style={{padding:"28px 24px"}}>
+          <div style={{display:"flex",alignItems:"center",marginBottom:"28px"}}>
+            <button className="back" onClick={()=>setScreen("home")}>←</button>
+            <div style={{marginLeft:"14px"}}><div style={{fontSize:"22px",fontWeight:"800"}}>21-Day Yoga Challenge 🔥</div><div style={{fontSize:"13px",color:"rgba(255,255,255,0.4)"}}>योग को आदत बनाएं</div></div>
+          </div>
+          {challenge&&challenge.done.length>0?(
+            <div className="tap" onClick={()=>setScreen("tracker")} style={{background:"linear-gradient(135deg,#8B5CF6,#6D28D9)",borderRadius:"18px",padding:"20px",marginBottom:"16px",cursor:"pointer"}}>
+              <div style={{fontSize:"13px",color:"rgba(255,255,255,0.7)",marginBottom:"8px"}}>Your Active Challenge</div>
+              <div style={{fontSize:"28px",fontWeight:"800",marginBottom:"4px"}}>{challenge.done.length}/{challenge.days} Days ✅</div>
+              <div style={{height:"8px",background:"rgba(255,255,255,0.15)",borderRadius:"4px",marginTop:"10px"}}>
+                <div style={{width:`${(challenge.done.length/challenge.days)*100}%`,height:"100%",background:"#FFFFFF",borderRadius:"4px"}}/>
+              </div>
+              <div style={{marginTop:"10px",fontSize:"12px",color:"rgba(255,255,255,0.7)"}}>Tap to continue today's practice →</div>
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:"14px",marginBottom:"28px"}}>
+              {[{days:7,label:"7-Day Challenge",labelHi:"७ दिन चुनौती",color:"#10A87C",desc:"शुरुआत के लिए — Foundation week",reward:"Week Champion Badge 🏅"},{days:21,label:"21-Day Challenge",labelHi:"२१ दिन चुनौती",color:"#E8622A",desc:"Complete transformation — 3 full weeks",reward:"Certified Yoga Abhyasi Certificate 🎓",popular:true}].map(c=>(
+                <div key={c.days} className="tap" onClick={()=>startChallenge(c.days)} style={{background:"#13131E",border:`2px solid ${c.color}33`,borderRadius:"18px",padding:"20px",cursor:"pointer",position:"relative"}}>
+                  {c.popular&&<div style={{position:"absolute",top:"12px",right:"12px",background:c.color,color:"white",fontSize:"10px",fontWeight:"800",padding:"3px 10px",borderRadius:"10px"}}>RECOMMENDED</div>}
+                  <div style={{fontSize:"28px",fontWeight:"800",color:c.color,marginBottom:"4px"}}>{c.days}</div>
+                  <div style={{fontWeight:"700",fontSize:"17px",marginBottom:"2px"}}>{c.label} <span style={{color:"rgba(255,255,255,0.4)",fontWeight:"400",fontSize:"14px"}}>· {c.labelHi}</span></div>
+                  <div style={{color:"rgba(255,255,255,0.5)",fontSize:"13px",marginBottom:"10px"}}>{c.desc}</div>
+                  <div style={{background:`${c.color}18`,border:`1px solid ${c.color}33`,borderRadius:"10px",padding:"8px 12px",fontSize:"12px",color:c.color,fontWeight:"600"}}>🎁 Reward: {c.reward}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Badges overview */}
+          <div style={{background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"16px",padding:"16px"}}>
+            <div style={{fontSize:"13px",fontWeight:"600",color:"rgba(255,255,255,0.7)",marginBottom:"12px"}}>Badges Unlocked 🏆</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
+              {BADGES.map(b=>{const earned=challenge?.badges?.includes(b.id);return(
+                <div key={b.id} style={{background:earned?"rgba(255,200,60,0.12)":"rgba(255,255,255,0.03)",border:`1px solid ${earned?"rgba(255,200,60,0.3)":"rgba(255,255,255,0.07)"}`,borderRadius:"12px",padding:"8px 12px",textAlign:"center",opacity:earned?1:0.5}}>
+                  <div style={{fontSize:"20px",marginBottom:"3px"}}>{earned?b.emoji:"🔒"}</div>
+                  <div style={{fontSize:"10px",color:earned?"rgba(255,200,60,0.9)":"rgba(255,255,255,0.3)",fontWeight:"600",lineHeight:1.2}}>{b.titleHi}</div>
+                  <div style={{fontSize:"9px",color:"rgba(255,255,255,0.25)",marginTop:"2px"}}>Day {b.day}</div>
+                </div>
+              );})}
+            </div>
+          </div>
+          {challenge&&challenge.certGenerated&&<button className="tap" onClick={()=>setScreen("certificate")} style={{width:"100%",background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"14px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginTop:"14px",boxShadow:"0 5px 18px rgba(232,98,42,0.3)"}}>🎓 View Your Certificate →</button>}
+        </div>
+      )}
+
+      {/* ── DAILY TRACKER ── */}
+      {screen==="tracker"&&challenge&&(()=>{
+        const day=Math.min(challenge.done.length+1, challenge.days);
+        const task=DAILY_TASKS[day-1]||DAILY_TASKS[20];
+        const today=new Date().toISOString().split("T")[0];
+        const doneToday=challenge.lastCheckin===today;
+        const pct=Math.round((challenge.done.length/challenge.days)*100);
+        return(
+          <div className="page fade" style={{padding:"28px 24px"}}>
+            <div style={{display:"flex",alignItems:"center",marginBottom:"24px"}}>
+              <button className="back" onClick={()=>setScreen("challenge")}>←</button>
+              <div style={{marginLeft:"14px"}}><div style={{fontSize:"20px",fontWeight:"800"}}>Day {challenge.done.length}/{challenge.days} 🔥</div><div style={{fontSize:"12px",color:"rgba(255,255,255,0.4)"}}>{pct}% complete</div></div>
+              <div style={{marginLeft:"auto",fontSize:"28px",fontWeight:"900",color:"#E8622A"}}>{challenge.done.length}🔥</div>
+            </div>
+            {/* Progress bar */}
+            <div style={{height:"6px",background:"rgba(255,255,255,0.07)",borderRadius:"3px",marginBottom:"24px"}}>
+              <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#E8622A,#8B5CF6)",borderRadius:"3px",transition:"width 0.5s ease"}}/>
+            </div>
+            {/* Today's task card */}
+            <div style={{background:"#13131E",border:"1px solid rgba(232,98,42,0.2)",borderRadius:"20px",padding:"22px",marginBottom:"16px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
+                <div style={{fontSize:"11px",color:"#E8622A",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase"}}>Today — Day {day}</div>
+                <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"8px",padding:"4px 10px",fontSize:"11px",color:"rgba(255,255,255,0.5)"}}>{task.mins} min</div>
+              </div>
+              <div style={{fontSize:"26px",fontWeight:"800",marginBottom:"4px"}}>{task.asana}</div>
+              <div style={{fontSize:"18px",color:"rgba(255,255,255,0.45)",marginBottom:"16px"}}>{task.sanskrit}</div>
+              <div style={{display:"flex",alignItems:"center",gap:"10px",background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.15)",borderRadius:"12px",padding:"12px 14px",marginBottom:"14px"}}>
+                <span style={{fontSize:"20px"}}>🌬️</span>
+                <div><div style={{fontSize:"12px",color:"rgba(255,255,255,0.4)"}}>Pranayama</div><div style={{fontWeight:"700",fontSize:"15px",color:"#10A87C"}}>{task.pranayama}</div></div>
+              </div>
+              <div style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:1.5,fontStyle:"italic"}}>"{task.tip}"</div>
+            </div>
+            {/* Mark done button */}
+            {!doneToday&&challenge.done.length<challenge.days?(
+              <button className="tap" onClick={markDone} style={{width:"100%",background:"linear-gradient(135deg,#10A87C,#0D8A65)",color:"white",border:"none",borderRadius:"16px",padding:"20px",fontSize:"18px",fontWeight:"800",cursor:"pointer",boxShadow:"0 8px 28px rgba(16,168,124,0.35)",marginBottom:"14px",letterSpacing:"0.3px"}}>
+                ✅ Mark as Done — Streak +1
+              </button>
+            ):(
+              <div style={{background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.25)",borderRadius:"16px",padding:"18px",textAlign:"center",marginBottom:"14px"}}>
+                <div style={{fontSize:"24px",marginBottom:"6px"}}>{challenge.done.length>=challenge.days?"🎓":"✅"}</div>
+                <div style={{fontWeight:"700",color:"#10A87C"}}>{challenge.done.length>=challenge.days?"Challenge Complete! 🎉":"Today's practice done! Come back tomorrow."}</div>
+              </div>
+            )}
+            {/* Days grid */}
+            <div style={{background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"16px",padding:"16px"}}>
+              <div style={{fontSize:"12px",color:"rgba(255,255,255,0.4)",marginBottom:"12px",fontWeight:"600"}}>Challenge Progress</div>
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(challenge.days,7)},1fr)`,gap:"6px"}}>
+                {Array.from({length:challenge.days},(_,i)=>{
+                  const d=i+1; const done=challenge.done.includes(d); const isBadge=BADGES.find(b=>b.day===d);
+                  return(
+                    <div key={d} style={{aspectRatio:"1",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",background:done?"linear-gradient(135deg,#10A87C,#0D8A65)":"rgba(255,255,255,0.05)",border:`1px solid ${done?"transparent":"rgba(255,255,255,0.07)"}`,fontSize:"11px",fontWeight:"700",color:done?"white":"rgba(255,255,255,0.3)",position:"relative"}}>
+                      {isBadge&&done&&<div style={{position:"absolute",top:"-4px",right:"-4px",fontSize:"10px"}}>{isBadge.emoji}</div>}
+                      {d}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {challenge.done.length>=challenge.days&&<button className="tap" onClick={()=>setScreen("certificate")} style={{width:"100%",background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"14px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginTop:"14px",boxShadow:"0 5px 18px rgba(232,98,42,0.3)"}}>🎓 Get Your Certificate →</button>}
+          </div>
+        );
+      })()}
+
+      {/* ── CERTIFICATE ── */}
+      {screen==="certificate"&&(
+        <div className="page fade" style={{padding:"28px 24px"}}>
+          <div style={{display:"flex",alignItems:"center",marginBottom:"24px"}}>
+            <button className="back" onClick={()=>setScreen("challenge")}>←</button>
+            <div style={{marginLeft:"14px"}}><div style={{fontSize:"20px",fontWeight:"800"}}>Your Certificate 🎓</div><div style={{fontSize:"12px",color:"rgba(255,255,255,0.4)"}}>Certified Yoga Abhyasi</div></div>
+          </div>
+          <canvas ref={certCanvasRef} style={{display:"none"}}/>
+          {certUrl?(
+            <div style={{borderRadius:"16px",overflow:"hidden",marginBottom:"20px",boxShadow:"0 16px 48px rgba(0,0,0,0.6)"}}>
+              <img src={certUrl} alt="certificate" style={{width:"100%",display:"block"}}/>
+            </div>
+          ):(
+            <div style={{background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"16px",padding:"40px 20px",textAlign:"center",marginBottom:"20px"}}>
+              <div style={{fontSize:"48px",marginBottom:"16px"}}>🎓</div>
+              <div style={{fontWeight:"700",fontSize:"18px",marginBottom:"8px"}}>Certified Yoga Abhyasi</div>
+              <div style={{color:"rgba(255,255,255,0.4)",fontSize:"13px",marginBottom:"24px"}}>{name} · {district} · {challenge?.days}-Day Challenge</div>
+              <button className="tap" onClick={generateCert} style={{background:"linear-gradient(135deg,#E8622A,#C44E1A)",color:"white",border:"none",borderRadius:"12px",padding:"14px 28px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 5px 18px rgba(232,98,42,0.3)"}}>Generate Certificate →</button>
+            </div>
+          )}
+          {certUrl&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+              <button className="tap" onClick={downloadCert} style={{background:"linear-gradient(135deg,#059669,#047857)",color:"white",border:"none",borderRadius:"14px",padding:"16px",fontSize:"14px",fontWeight:"700",cursor:"pointer",boxShadow:"0 4px 16px rgba(5,150,105,0.3)"}}>⬇ Download</button>
+              <button className="tap" onClick={()=>{const t="🎓 I completed the "+challenge?.days+"-Day Yoga Challenge!%0A%0AName: "+name+"%0ADistrict: "+district+"%0A%0A#YogaPath #AYUSH #IDY2026 #CertifiedYogaAbhyasi";window.open("https://wa.me/?text="+t,"_blank");}} style={{background:"linear-gradient(135deg,#25D366,#1DAB52)",color:"white",border:"none",borderRadius:"14px",padding:"16px",fontSize:"14px",fontWeight:"700",cursor:"pointer",boxShadow:"0 4px 16px rgba(37,211,102,0.3)"}}>📤 WhatsApp</button>
+            </div>
+          )}
+          {/* Badges earned */}
+          <div style={{background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"16px",padding:"16px",marginTop:"16px"}}>
+            <div style={{fontSize:"13px",fontWeight:"600",marginBottom:"12px"}}>Your Badges</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"10px"}}>
+              {BADGES.filter(b=>challenge?.badges?.includes(b.id)).map(b=>(
+                <div key={b.id} style={{background:"rgba(255,200,60,0.08)",border:"1px solid rgba(255,200,60,0.25)",borderRadius:"12px",padding:"10px 14px",textAlign:"center"}}>
+                  <div style={{fontSize:"24px",marginBottom:"4px"}}>{b.emoji}</div>
+                  <div style={{fontSize:"11px",fontWeight:"600",color:"rgba(255,200,60,0.9)"}}>{b.titleHi}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
