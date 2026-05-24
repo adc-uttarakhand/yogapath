@@ -679,19 +679,44 @@ select.inp option{background:#13131E;color:#fff;}
 `;
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
+
+function drawStrip(ctx, FW, FH, STRIP, p) {
+  const sg=ctx.createLinearGradient(0,FH,0,FH+STRIP);
+  sg.addColorStop(0,"#0A0A14"); sg.addColorStop(1,"#06060F");
+  ctx.fillStyle=sg; ctx.fillRect(0,FH,FW,STRIP);
+  ctx.fillStyle="#E8622A"; ctx.fillRect(0,FH,FW,4);
+  const pin=String.fromCodePoint(0x1F4CD);
+  const sep="   |   ";
+  const parts=[p.name||"Yogi"];
+  if(p.role) parts.push(p.role);
+  if(p.district) parts.push(pin+" "+p.district);
+  if(p.mode==="message") parts.push("Yoga Message");
+  else if(p.asana) parts.push(p.asana.name+" | "+p.asana.sanskrit);
+  const line=parts.join(sep);
+  const MAX_W=FW-48; let fs=26;
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  while(ctx.measureText(line).width>MAX_W&&fs>11){fs--;ctx.font="bold "+fs+"px Arial,sans-serif";}
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillText(line,FW/2,FH+STRIP/2+4);
+  ctx.textBaseline="alphabetic";
+}
 function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, lsFrame, ptFrame, onCapture, onBack }) {
   const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null),
         recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null),
         sqImgRef=useRef(null), lsImgRef=useRef(null), ptImgRef=useRef(null),
-        galleryRef=useRef(null), galleryImgRef=useRef(null);
+        galleryRef=useRef(null), galleryImgRef=useRef(null),
+        galleryModeRef=useRef(false),
+        offsetRef=useRef({x:0,y:0}), touchRef=useRef(null);
 
   const [facing,setFacing]=useState("environment");
-  const [camState,setCamState]=useState("idle");   // idle|previewing|recording|processing
+  const [camState,setCamState]=useState("idle");
   const [secs,setSecs]=useState(0);
   const [err,setErr]=useState(null);
-  const [timer,setTimer]=useState(0);              // 0|5|10|20 sec
-  const [countdown,setCountdown]=useState(null);   // live countdown number
-  const [galleryMode,setGalleryMode]=useState(false);
+  const [timer,setTimer]=useState(0);
+  const [countdown,setCountdown]=useState(null);
+  const [adjustMode,setAdjustMode]=useState(false);
+  const [offset,setOffset]=useState({x:0,y:0});
 
   const isPhoto=mode==="photo";
   const ori=ORIENTATIONS.find(o=>o.id===orientation)||ORIENTATIONS[0];
@@ -717,86 +742,127 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     } else { lsImgRef.current=null; }
   },[orientation,lsFrame]);
 
+  // ── Core: draw source with blurred background + contained sharp image + offset ──
+  function drawSrc(ctx, src, FW, FH, off) {
+    const sw=src.videoWidth||src.naturalWidth||FW;
+    const sh=src.videoHeight||src.naturalHeight||FH;
+    if(!sw||!sh) return;
+    const ox=off?.x||0, oy=off?.y||0;
+    // 1. Blurred cover background (no black bars)
+    const bgSc=Math.max(FW/sw,FH/sh)*1.08;
+    ctx.save(); ctx.filter="blur(14px)";
+    ctx.drawImage(src,(FW-sw*bgSc)/2,(FH-sh*bgSc)/2,sw*bgSc,sh*bgSc);
+    ctx.restore();
+    // 2. Sharp contained image + user offset
+    const sc=Math.min(FW/sw,FH/sh);
+    ctx.drawImage(src,(FW-sw*sc)/2+ox,(FH-sh*sc)/2+oy,sw*sc,sh*sc);
+  }
+
   // ── Draw loop ──
   const drawLoop=useCallback(()=>{
-    if(!canvasRef.current||!videoRef.current) return;
+    if(!canvasRef.current) return;
     const cv=canvasRef.current;
-    const src=galleryMode&&galleryImgRef.current ? galleryImgRef.current : videoRef.current;
+    const src=galleryModeRef.current&&galleryImgRef.current ? galleryImgRef.current : videoRef.current;
+    if(!src) { animRef.current=requestAnimationFrame(drawLoop); return; }
+    const off=offsetRef.current;
     const sqImg=sqImgRef.current, lsImg=lsImgRef.current;
+    const ctx=cv.getContext("2d");
+
     if(orientation==="square"&&sqImg){
-      if(cv.width!==1080)cv.width=1080; if(cv.height!==1168)cv.height=1168;
-      drawSquareFrame(cv,src,sqImg,{name,role,district,mode,asana,msg,sqFrame});
+      const FW=1080,FH=1080,STRIP=88;
+      cv.width=FW; cv.height=FH+STRIP;
+      ctx.fillStyle="#000"; ctx.fillRect(0,0,FW,FH);
+      drawSrc(ctx,src,FW,FH,off);
+      ctx.drawImage(sqImg,0,0,FW,FH);
+      drawStrip(ctx,FW,FH,STRIP,{name,role,district,mode,asana});
     } else if(orientation==="portrait"&&ptImgRef.current){
-      if(cv.width!==720)cv.width=720; if(cv.height!==1368)cv.height=1368;
-      drawPortraitFrame(cv,src,ptImgRef.current,{name,role,district,mode,asana,msg});
+      const FW=720,FH=1280,STRIP=88;
+      cv.width=FW; cv.height=FH+STRIP;
+      ctx.fillStyle="#000"; ctx.fillRect(0,0,FW,FH);
+      drawSrc(ctx,src,FW,FH,off);
+      ctx.drawImage(ptImgRef.current,0,0,FW,FH);
+      drawStrip(ctx,FW,FH,STRIP,{name,role,district,mode,asana});
     } else if(orientation==="landscape"&&lsImg){
-      if(cv.width!==1280)cv.width=1280; if(cv.height!==728)cv.height=728;
-      drawLandscapeFrame(cv,src,lsImg,{name,role,district,mode,asana,msg});
+      const FW=1280,FH=640,STRIP=88;
+      cv.width=FW; cv.height=FH+STRIP;
+      ctx.fillStyle="#000"; ctx.fillRect(0,0,FW,FH);
+      drawSrc(ctx,src,FW,FH,off);
+      ctx.drawImage(lsImg,0,0,FW,FH);
+      drawStrip(ctx,FW,FH,STRIP,{name,role,district,mode,asana});
     } else {
       if(cv.width!==CW)cv.width=CW; if(cv.height!==CH)cv.height=CH;
       drawAYUSHFrame(cv,src,{asana,name,district,role,mode,msg,bgStyle,orientation});
     }
-    if(!galleryMode) animRef.current=requestAnimationFrame(drawLoop);
-  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,lsFrame,ptFrame,CW,CH,galleryMode]);
+    animRef.current=requestAnimationFrame(drawLoop);
+  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,lsFrame,ptFrame,CW,CH]);
 
-  // ── Camera start — FIX: standard constraints, then try zoom=min ──
+  // ── Camera start ──
   async function startCam(f=facing){
-    setGalleryMode(false); galleryImgRef.current=null;
+    galleryModeRef.current=false; galleryImgRef.current=null;
     try{
       if(streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop());
       const s=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:f},width:{ideal:720,max:1280},height:{ideal:1280,max:1920}},
-        audio:!isPhoto
+        video:{facingMode:{ideal:f}},audio:!isPhoto
       });
-      // Try to set minimum zoom (1x)
       const vt=s.getVideoTracks()[0];
-      if(vt){
-        const cap=vt.getCapabilities();
-        if(cap.zoom) await vt.applyConstraints({advanced:[{zoom:cap.zoom.min}]}).catch(()=>{});
-      }
+      if(vt){ const cap=vt.getCapabilities?.(); if(cap?.zoom) await vt.applyConstraints({advanced:[{zoom:cap.zoom.min}]}).catch(()=>{}); }
       streamRef.current=s; videoRef.current.srcObject=s;
       await videoRef.current.play();
       cancelAnimationFrame(animRef.current); drawLoop();
-      setCamState("previewing"); setErr(null);
-    }catch(e){setErr(e.name==="NotAllowedError"?"Camera permission denied. Please allow access.":e.message);}
+      setCamState("previewing"); setErr(null); setOffset({x:0,y:0}); offsetRef.current={x:0,y:0};
+    }catch(e){setErr(e.name==="NotAllowedError"?"Camera permission denied.":e.message);}
   }
-
   function stopCam(){
     cancelAnimationFrame(animRef.current);
     if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
     if(videoRef.current) videoRef.current.srcObject=null;
   }
   useEffect(()=>()=>stopCam(),[]);
-
   function flip(){const f=facing==="user"?"environment":"user";setFacing(f);startCam(f);}
 
-  // ── Gallery pick ──
+  // ── Gallery ──
   function handleGallery(e){
     const file=e.target.files?.[0]; if(!file) return;
     const url=URL.createObjectURL(file);
     if(file.type.startsWith("image/")){
       const img=new Image();
       img.onload=()=>{
-        galleryImgRef.current=img; setGalleryMode(true);
-        // Render once on canvas, then trigger capture immediately
         cancelAnimationFrame(animRef.current);
-        drawLoop();
+        galleryImgRef.current=img;
+        galleryModeRef.current=true;
+        setOffset({x:0,y:0}); offsetRef.current={x:0,y:0};
         setCamState("previewing");
+        drawLoop();
       };
       img.src=url;
     } else if(file.type.startsWith("video/")){
-      // For gallery video: play in video element and draw frames
       const vid=videoRef.current;
+      galleryModeRef.current=false; galleryImgRef.current=null;
       vid.src=url; vid.muted=true; vid.loop=true;
-      vid.play().then(()=>{
-        galleryImgRef.current=null; setGalleryMode(false);
-        cancelAnimationFrame(animRef.current); drawLoop();
-        setCamState("previewing");
-      });
+      vid.play().then(()=>{ cancelAnimationFrame(animRef.current); drawLoop(); setCamState("previewing"); });
     }
+    e.target.value="";
   }
 
-  // ── Capture with optional timer ──
+  // ── Touch: drag to reposition ──
+  function onTouchStart(e){
+    if(!adjustMode) return;
+    const t=e.touches[0];
+    const rect=canvasRef.current.getBoundingClientRect();
+    const scX=canvasRef.current.width/rect.width;
+    touchRef.current={sx:t.clientX*scX-offsetRef.current.x, sy:t.clientY*scX-offsetRef.current.y, scX};
+  }
+  function onTouchMove(e){
+    if(!adjustMode||!touchRef.current) return;
+    e.preventDefault();
+    const t=e.touches[0];
+    const {sx,sy,scX}=touchRef.current;
+    const newOff={x:t.clientX*scX-sx, y:t.clientY*scX-sy};
+    offsetRef.current=newOff;
+  }
+  function onTouchEnd(){ touchRef.current=null; setOffset({...offsetRef.current}); }
+
+  // ── Capture ──
   function capturePhoto(){const url=canvasRef.current.toDataURL("image/jpeg",0.94);stopCam();onCapture({type:"photo",url});}
   function startRec(){
     chunksRef.current=[];
@@ -809,155 +875,124 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     recRef.current.start(200); setCamState("recording"); setSecs(0);
   }
   function stopRec(){recRef.current?.stop();setCamState("processing");}
-
   function triggerCapture(){
-    if(timer===0){ isPhoto?capturePhoto():startRec(); return; }
+    if(timer===0){isPhoto?capturePhoto():startRec();return;}
     let c=timer; setCountdown(c);
-    const iv=setInterval(()=>{
-      c--;
-      if(c<=0){ clearInterval(iv); setCountdown(null); isPhoto?capturePhoto():startRec(); }
-      else setCountdown(c);
-    },1000);
+    const iv=setInterval(()=>{c--;if(c<=0){clearInterval(iv);setCountdown(null);isPhoto?capturePhoto():startRec();}else setCountdown(c);},1000);
   }
-
   useEffect(()=>{if(camState!=="recording")return;const t=setInterval(()=>setSecs(s=>s+1),1000);return()=>clearInterval(t);},[camState]);
   const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const modeObj=MODES.find(m=>m.id===mode);
   const isLS=orientation==="landscape";
+  const isLive=camState==="previewing"||camState==="recording";
 
   return (
     <div style={{background:"#000",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:"'Sora',system-ui,sans-serif"}}>
-      {/* Top bar */}
-      <div style={{padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <button onClick={()=>{stopCam();onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"8px 14px",borderRadius:"10px",cursor:"pointer",fontSize:"16px"}}>←</button>
-        <div style={{color:"white",fontSize:"13px",fontWeight:"600",display:"flex",alignItems:"center",gap:"6px"}}>
+      <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <button onClick={()=>{stopCam();onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"7px 12px",borderRadius:"9px",cursor:"pointer",fontSize:"16px"}}>←</button>
+        <div style={{color:"white",fontSize:"12px",fontWeight:"600",display:"flex",alignItems:"center",gap:"5px"}}>
           <span>{modeObj?.icon}</span><span>{modeObj?.title}</span>
-          <span style={{color:"#555",fontSize:"11px"}}>· {ori.label}</span>
+          <span style={{color:"#555",fontSize:"10px"}}>· {ori.label}</span>
         </div>
-        <div style={{width:"42px"}}/>
+        <div style={{width:"38px"}}/>
       </div>
 
-      {isLS&&<div style={{padding:"4px 16px",background:"rgba(255,160,20,0.12)",borderRadius:"8px",margin:"0 16px 6px",fontSize:"11px",color:"#FFA014",textAlign:"center"}}>
-        📱 Landscape के लिए phone को sideways घुमाएं
+      {isLS&&<div style={{padding:"3px 14px",background:"rgba(255,160,20,0.12)",borderRadius:"8px",margin:"0 14px 5px",fontSize:"10px",color:"#FFA014",textAlign:"center"}}>
+        📱 Landscape के लिए phone sideways घुमाएं
       </div>}
 
-      {/* Canvas preview */}
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0 4px"}}>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0 4px",overflow:"hidden"}}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <video ref={videoRef} style={{display:"none"}} muted playsInline autoPlay/>
-        <canvas ref={canvasRef} width={CW} height={CH} style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"10px"}}/>
-
-        {/* Countdown overlay */}
+        <canvas ref={canvasRef} width={CW} height={CH}
+          style={{width:"100%",maxHeight:"calc(100vh - 195px)",objectFit:"contain",borderRadius:"8px",
+            border:adjustMode?"2px solid #E8622A":"none"}}/>
+        {adjustMode&&<div style={{position:"absolute",top:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(232,98,42,0.85)",padding:"4px 12px",borderRadius:"20px",fontSize:"11px",color:"white",fontWeight:"600",pointerEvents:"none"}}>
+          ✋ Drag to adjust position
+        </div>}
         {countdown!==null&&(
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.45)",borderRadius:"10px"}}>
-            <div style={{fontSize:"96px",fontWeight:"900",color:"#E8622A",lineHeight:1,textShadow:"0 0 30px rgba(232,98,42,0.6)"}}>{countdown}</div>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)",borderRadius:"8px"}}>
+            <div style={{fontSize:"88px",fontWeight:"900",color:"#E8622A",lineHeight:1}}>{countdown}</div>
           </div>
         )}
-        {camState==="idle"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.5)",borderRadius:"10px"}}>
+        {camState==="idle"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.55)",borderRadius:"8px"}}>
           <div style={{textAlign:"center",color:"white"}}>
-            <div style={{fontSize:"40px",marginBottom:"8px"}}>📷</div>
-            <div style={{fontSize:"13px",opacity:0.6}}>Camera start करें या Gallery से चुनें</div>
+            <div style={{fontSize:"36px",marginBottom:"8px"}}>📷</div>
+            <div style={{fontSize:"12px",opacity:0.6}}>Camera start करें या Gallery से चुनें</div>
           </div>
         </div>}
-        {camState==="recording"&&<div style={{position:"absolute",top:"14px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.75)",padding:"5px 14px",borderRadius:"20px",display:"flex",alignItems:"center",gap:"6px"}}>
-          <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"#EF4444",animation:"pulse 1s infinite"}}/>
-          <span style={{color:"white",fontSize:"13px",fontWeight:"600"}}>{fmt(secs)}</span>
+        {camState==="recording"&&<div style={{position:"absolute",top:"12px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.75)",padding:"5px 12px",borderRadius:"20px",display:"flex",alignItems:"center",gap:"6px"}}>
+          <div style={{width:"7px",height:"7px",borderRadius:"50%",background:"#EF4444"}}/>
+          <span style={{color:"white",fontSize:"12px",fontWeight:"600"}}>{fmt(secs)}</span>
         </div>}
-        {camState==="processing"&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"10px"}}>
-          <div style={{textAlign:"center",color:"white"}}><div style={{fontSize:"32px"}}>⏳</div><div style={{fontSize:"13px",marginTop:"8px"}}>Processing...</div></div>
+        {camState==="processing"&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"8px"}}>
+          <div style={{textAlign:"center",color:"white"}}><div style={{fontSize:"28px"}}>⏳</div><div style={{fontSize:"12px",marginTop:"6px"}}>Processing...</div></div>
         </div>}
       </div>
 
-      {/* Bottom controls */}
-      <div style={{padding:"14px 20px 32px",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px"}}>
-        {err&&<div style={{color:"#FCA5A5",fontSize:"12px",textAlign:"center",padding:"8px 14px",background:"rgba(239,68,68,0.1)",borderRadius:"8px",width:"100%"}}>{err}</div>}
+      <div style={{padding:"10px 18px 28px",display:"flex",flexDirection:"column",alignItems:"center",gap:"9px",flexShrink:0}}>
+        {err&&<div style={{color:"#FCA5A5",fontSize:"11px",textAlign:"center",padding:"7px 12px",background:"rgba(239,68,68,0.1)",borderRadius:"8px",width:"100%"}}>{err}</div>}
 
-        {/* Timer selector */}
-        {(camState==="previewing")&&(
-          <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"6px 10px"}}>
-            <span style={{color:"rgba(255,255,255,0.45)",fontSize:"11px",fontWeight:"600",marginRight:"2px"}}>⏱ Timer:</span>
-            {[0,5,10,20].map(t=>(
-              <button key={t} onClick={()=>setTimer(t)}
-                style={{background:timer===t?"#E8622A":"transparent",color:timer===t?"white":"rgba(255,255,255,0.45)",border:timer===t?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:"8px",padding:"4px 10px",fontSize:"11px",fontWeight:"600",cursor:"pointer"}}>
-                {t===0?"OFF":t+"s"}
-              </button>
-            ))}
-          </div>
-        )}
+        {isLive&&<div style={{display:"flex",alignItems:"center",gap:"6px",background:"rgba(255,255,255,0.05)",borderRadius:"10px",padding:"5px 9px"}}>
+          <span style={{color:"rgba(255,255,255,0.4)",fontSize:"10px",fontWeight:"600"}}>⏱</span>
+          {[0,5,10,20].map(t=>(
+            <button key={t} onClick={()=>setTimer(t)}
+              style={{background:timer===t?"#E8622A":"transparent",color:timer===t?"white":"rgba(255,255,255,0.4)",border:timer===t?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:"7px",padding:"3px 9px",fontSize:"10px",fontWeight:"600",cursor:"pointer"}}>
+              {t===0?"OFF":t+"s"}
+            </button>
+          ))}
+          <div style={{width:"1px",height:"14px",background:"rgba(255,255,255,0.1)",margin:"0 2px"}}/>
+          <button onClick={()=>{setAdjustMode(a=>!a); offsetRef.current={x:0,y:0}; setOffset({x:0,y:0});}}
+            style={{background:adjustMode?"#E8622A":"transparent",color:adjustMode?"white":"rgba(255,255,255,0.4)",border:adjustMode?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:"7px",padding:"3px 9px",fontSize:"10px",fontWeight:"600",cursor:"pointer"}}>
+            ✋ Adjust
+          </button>
+        </div>}
 
-        {/* Main action row: Gallery | Capture | Flip */}
         {camState==="idle"&&(
-          <div style={{display:"flex",gap:"12px",alignItems:"center",justifyContent:"center",width:"100%"}}>
-            {/* Gallery button */}
+          <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
             <button onClick={()=>galleryRef.current.click()}
-              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              🖼
-            </button>
-            {/* Camera start */}
+              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🖼</button>
             <button onClick={()=>startCam()}
-              style={{width:"68px",height:"68px",borderRadius:"50%",background:"#E8622A",border:"4px solid rgba(255,255,255,0.25)",color:"white",fontSize:"28px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(232,98,42,0.5)"}}>
-              📷
-            </button>
-            {/* Flip placeholder */}
-            <div style={{width:"52px",height:"52px"}}/>
+              style={{width:"64px",height:"64px",borderRadius:"50%",background:"#E8622A",border:"4px solid rgba(255,255,255,0.25)",color:"white",fontSize:"26px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(232,98,42,0.5)"}}>📷</button>
+            <div style={{width:"50px",height:"50px"}}/>
           </div>
         )}
 
         {camState==="previewing"&&isPhoto&&(
           <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
-            {/* Gallery */}
             <button onClick={()=>galleryRef.current.click()}
-              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              🖼
-            </button>
-            {/* Capture */}
+              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🖼</button>
             <button onClick={triggerCapture} disabled={countdown!==null}
-              style={{width:"72px",height:"72px",borderRadius:"50%",background:countdown!==null?"#555":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",boxShadow:"0 4px 18px rgba(232,98,42,0.5)",transition:"transform 0.1s"}}/>
-            {/* Flip */}
+              style={{width:"68px",height:"68px",borderRadius:"50%",background:countdown!==null?"#444":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",boxShadow:"0 4px 16px rgba(232,98,42,0.45)"}}/>
             <button onClick={flip}
-              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              🔄
-            </button>
+              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔄</button>
           </div>
         )}
 
         {camState==="previewing"&&!isPhoto&&(
           <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
-            {/* Gallery */}
             <button onClick={()=>galleryRef.current.click()}
-              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              🖼
+              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🖼</button>
+            <button onClick={triggerCapture} disabled={countdown!==null}
+              style={{width:"68px",height:"68px",borderRadius:"50%",background:countdown!==null?"#444":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(232,98,42,0.4)"}}>
+              <div style={{width:"22px",height:"22px",borderRadius:"50%",background:"white"}}/>
             </button>
-            {/* Record */}
-            <button onClick={()=>{countdown!==null?null:triggerCapture()}} disabled={countdown!==null}
-              style={{width:"72px",height:"72px",borderRadius:"50%",background:countdown!==null?"#555":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(232,98,42,0.4)"}}>
-              <div style={{width:"24px",height:"24px",borderRadius:"50%",background:"white"}}/>
-            </button>
-            {/* Flip */}
             <button onClick={flip}
-              style={{width:"52px",height:"52px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              🔄
-            </button>
+              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔄</button>
           </div>
         )}
 
         {camState==="recording"&&(
           <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
-            <div style={{width:"52px",height:"52px"}}/>
-            {/* Stop */}
+            <div style={{width:"50px"}}/>
             <button onClick={stopRec}
-              style={{width:"72px",height:"72px",borderRadius:"50%",background:"#EF4444",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(239,68,68,0.5)"}}>
-              <div style={{width:"22px",height:"22px",borderRadius:"4px",background:"white"}}/>
+              style={{width:"68px",height:"68px",borderRadius:"50%",background:"#EF4444",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(239,68,68,0.5)"}}>
+              <div style={{width:"20px",height:"20px",borderRadius:"3px",background:"white"}}/>
             </button>
-            {/* Flip during recording */}
-            <div style={{width:"52px",height:"52px"}}/>
+            <div style={{width:"50px"}}/>
           </div>
         )}
 
-        {camState==="previewing"&&<div style={{color:"rgba(255,255,255,0.2)",fontSize:"10px",textAlign:"center"}}>
-          AYUSH frame is live · below button = capture
-        </div>}
-
-        {/* Hidden file input */}
         <input ref={galleryRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleGallery}/>
       </div>
     </div>
