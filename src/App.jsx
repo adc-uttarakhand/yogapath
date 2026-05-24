@@ -721,6 +721,7 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
         mediaRef=useRef(null),
         offsetRef=useRef({x:0,y:0}), scaleRef=useRef(1),
         touchRef=useRef(null),
+        recordedMimeRef=useRef("video/webm"),
         // video recording refs
         videoRef=useRef(null), recRef=useRef(null),
         chunksRef=useRef([]), streamRef=useRef(null);
@@ -828,8 +829,38 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
 
   // ── Capture final ──
   function confirmCapture(){
-    const url=canvasRef.current.toDataURL("image/jpeg",0.94);
-    onCapture({type:"photo",url});
+    const med=mediaRef.current;
+    const isVid=med&&(med.tagName==="VIDEO"||med.videoWidth>0);
+    if(!isVid){
+      // Photo: direct canvas export
+      const url=canvasRef.current.toDataURL("image/jpeg",0.94);
+      onCapture({type:"photo",url});
+    } else {
+      // Video: re-encode canvas while video plays
+      setPhase("processing");
+      const mime=recordedMimeRef.current||"video/webm";
+      const cs=canvasRef.current.captureStream(30);
+      const chunks=[];
+      const rec=new MediaRecorder(cs,{mimeType:mime});
+      rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      rec.onstop=()=>{
+        const blob=new Blob(chunks,{type:mime});
+        onCapture({type:"video",blob,mime});
+      };
+      med.currentTime=0;
+      med.muted=false;
+      // Add audio from video to canvas stream
+      try{
+        const actx=new AudioContext();
+        const src=actx.createMediaElementSource(med);
+        const dst=actx.createMediaStreamDestination();
+        src.connect(dst); src.connect(actx.destination);
+        dst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));
+      }catch(e){}
+      rec.start(200);
+      med.play();
+      med.onended=()=>rec.stop();
+    }
   }
 
   // ── Video recording (live canvas) ──
@@ -873,7 +904,18 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
       cancelAnimationFrame(animRef.current);
       streamRef.current?.getTracks().forEach(t=>t.stop()); streamRef.current=null;
       const blob=new Blob(chunksRef.current,{type:mime});
-      onCapture({type:"video",blob,mime});
+      // Load recorded video into adjust phase
+      const url=URL.createObjectURL(blob);
+      const vid=document.createElement("video");
+      vid.src=url; vid.muted=false; vid.loop=true;
+      vid.onloadedmetadata=()=>{
+        mediaRef.current=vid;
+        recordedMimeRef.current=mime;
+        offsetRef.current={x:0,y:0}; scaleRef.current=1;
+        setOffset({x:0,y:0}); setScale(1);
+        vid.play().catch(()=>{});
+        setPhase("adjust");
+      };
     };
     recRef.current.start(200); setSecs(0);
   }
@@ -901,10 +943,10 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
       </div>
 
       {/* Canvas area */}
+      <video ref={videoRef} style={{display:"none"}} muted playsInline autoPlay/>
       {(phase==="adjust"||phase==="recording"||phase==="processing")&&(
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",overflow:"hidden",position:"relative"}}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-          <video ref={videoRef} style={{display:"none"}} muted playsInline autoPlay/>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
             style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",
               border:phase==="adjust"?"1.5px solid rgba(232,98,42,0.5)":"none"}}/>
@@ -932,7 +974,7 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
               <div style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",marginBottom:"4px"}}>Photo/Video lein ya choose karein</div>
               <div style={{fontSize:"11px",color:"rgba(255,255,255,0.3)"}}>Native camera · Full quality · No zoom issues</div>
             </div>
-            {isPhoto
+            {mode==="photo"
               ? <button onClick={()=>nativeCamRef.current.click()}
                   style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
                   📸 Camera से Photo लें
@@ -947,7 +989,7 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
               🖼 Gallery से चुनें
             </button>
             <input ref={nativeCamRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleFilePick}/>
-            <input ref={galleryRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleFilePick}/>
+            <input ref={galleryRef} type="file" accept={mode==="photo"?"image/*":"video/*"} style={{display:"none"}} onChange={handleFilePick}/>
           </div>
         )}
 
@@ -969,9 +1011,9 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
             {/* Confirm */}
             <button onClick={confirmCapture}
               style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
-              ✓ This is Perfect — Save →
+              {mediaRef.current&&(mediaRef.current.tagName==="VIDEO"||mediaRef.current.videoWidth>0)?"✓ Save Video with Frame →":"✓ This is Perfect — Save →"}
             </button>
-            <input ref={galleryRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleFilePick}/>
+            <input ref={galleryRef} type="file" accept={mode==="photo"?"image/*":"video/*"} style={{display:"none"}} onChange={handleFilePick}/>
           </div>
         )}
 
