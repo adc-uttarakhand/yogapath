@@ -823,28 +823,30 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   // ── Save ──
   function doSave(){
     const med=mediaRef.current;
-    const isVid=med&&(med.tagName==="VIDEO");
+    if(!med){setErr("No media selected");return;}
+    const isVid=med.tagName==="VIDEO";
     if(!isVid){
-      // Photo: export canvas directly
       const url=canvasRef.current.toDataURL("image/jpeg",0.94);
       onCapture({type:"photo",url});
     } else {
-      // Video: replay through canvas, record canvas stream
       setSaving(true);
-      const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      // Use existing canvasRef — keep adjust RAF loop running
       const cs=canvasRef.current.captureStream(30);
-      // Try to add audio
-      try{const ac=new AudioContext();const src=ac.createMediaElementSource(med);const dst=ac.createMediaStreamDestination();src.connect(dst);src.connect(ac.destination);dst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));}catch(e){}
       const chunks=[];
-      const rec=new MediaRecorder(cs,{mimeType:mime});
+      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:2500000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{setSaving(false);const blob=new Blob(chunks,{type:mime});onCapture({type:"video",blob,mime});};
-      med.muted=false;med.loop=false;med.currentTime=0;
-      med.play().catch(()=>{});
-      rec.start(200);
-      med.onended=()=>rec.stop();
-      // Safety: stop after 3min max
-      setTimeout(()=>{if(rec.state==="recording")rec.stop();},180000);
+      rec.onstop=()=>{
+        const blob=new Blob(chunks,{type:mime});
+        const url=URL.createObjectURL(blob);
+        setSaving(false);
+        onCapture({type:"video",blob,url,mime});
+      };
+      med.muted=true;med.loop=false;med.currentTime=0;
+      rec.start(100);
+      med.play().catch(e=>setErr("Video play error: "+e.message));
+      med.onended=()=>{if(rec.state==="recording")rec.stop();};
+      setTimeout(()=>{if(rec.state==="recording")rec.stop();},300000);
     }
   }
 
@@ -869,27 +871,24 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         }
       </div>
 
-      {/* Canvas (only in adjust/saving) */}
-      {phase==="adjust"&&(
+      {/* Canvas — visible in adjust AND while saving */}
+      {(phase==="adjust"||saving)&&(
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",overflow:"hidden",position:"relative"}}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
-            style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:"1.5px solid rgba(232,98,42,0.4)"}}/>
-          <div style={{position:"absolute",bottom:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.6)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.55)",whiteSpace:"nowrap"}}>
+            style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:saving?"1.5px solid rgba(16,168,124,0.4)":"1.5px solid rgba(232,98,42,0.4)"}}/>
+          {saving&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",borderRadius:"8px"}}>
+            <div style={{fontSize:"36px"}}>⏳</div>
+            <div style={{fontSize:"14px",fontWeight:"600",color:"white"}}>Video save हो रही है...</div>
+            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.45)"}}>Video पूरी play होने पर save होगी</div>
+          </div>}
+          {!saving&&<div style={{position:"absolute",bottom:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.6)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.55)",whiteSpace:"nowrap"}}>
             👆 Drag · Pinch to zoom
-          </div>
+          </div>}
         </div>
       )}
 
-      {/* Saving overlay */}
-      {saving&&(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"12px"}}>
-          <canvas ref={canvasRef} width={FW} height={FH+STRIP} style={{display:"none"}}/>
-          <div style={{fontSize:"32px"}}>⏳</div>
-          <div style={{fontSize:"14px",color:"rgba(255,255,255,0.7)"}}>Saving video with frame...</div>
-          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.35)"}}>Video poora play hone par save hoga</div>
-        </div>
-      )}
+
 
       {/* Bottom controls */}
       <div style={{padding:"12px 18px 32px",flexDirection:"column",alignItems:"center",gap:"10px",flexShrink:0,display:saving?"none":"flex"}}>
@@ -1023,7 +1022,18 @@ export default function App() {
 
   useEffect(()=>{ loadCommunity(); },[]);
 
-  function download(){if(!captured) return;const a=document.createElement("a");a.href=captured.url;a.download=captured.type==="photo"?`yoga-frame-${Date.now()}.jpg`:`yoga-video-${Date.now()}.webm`;a.click();}
+  function download(){
+    if(!captured) return;
+    const a=document.createElement("a");
+    if(captured.type==="video"){
+      a.href=captured.url||URL.createObjectURL(captured.blob);
+      a.download=`YogaPath-IDY2026-${Date.now()}.webm`;
+    } else {
+      a.href=captured.url;
+      a.download=`YogaPath-IDY2026-${Date.now()}.jpg`;
+    }
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }
   async function shareWA(){
     const who=role?`${name} (${role})`:name;
     const what=mode==="message"?"Yoga Message":`${asana?.name||"Yoga"}`;
@@ -1035,8 +1045,9 @@ export default function App() {
         const blob=await res.blob();
         file=new File([blob],"YogaPath-IDY2026.jpg",{type:"image/jpeg"});
       } else if(captured?.type==="video"&&captured?.blob){
-        const ext=captured.mime?.includes("mp4")?"mp4":"webm";
-        file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:captured.mime||"video/webm"});
+        const mime=captured.mime||"video/webm";
+        const ext=mime.includes("mp4")?"mp4":"webm";
+        file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:mime});
       }
       if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
         await navigator.share({files:[file],text:txt});
