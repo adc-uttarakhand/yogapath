@@ -830,7 +830,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       onCapture({type:"photo",url});
     } else {
       setSaving(true);
-      const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      const mime=["video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
       // ── Prepare video ──
       med.muted=false; med.volume=1; med.loop=false; med.currentTime=0;
       await new Promise(r=>{med.onseeked=r; if(med.readyState>=2)r();});
@@ -999,6 +999,7 @@ export default function App() {
   const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
   const [waMsg,setWaMsg]=useState("");
+  const [shareHint,setShareHint]=useState(false);
   const [sqFrame,setSqFrame]=useState(1);
   const [lsFrame,setLsFrame]=useState(1);
   const [ptFrame,setPtFrame]=useState(1);
@@ -1074,24 +1075,32 @@ export default function App() {
         const ext=mime.includes("mp4")?"mp4":"webm";
         file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:mime});
       }
-      // Try Web Share API with file
       if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],text:txt});
-        return;
+        try{
+          if(captured?.type==="video"){
+            // Video: share file only — no text (WhatsApp handles video+text poorly)
+            await navigator.share({files:[file]});
+          } else {
+            // Photo: share with text
+            await navigator.share({files:[file],text:txt});
+          }
+          return;
+        }catch(e){
+          if(e?.name==="AbortError") return;
+          // Fall through to next method
+        }
       }
-      // Video fallback: download first, then open WhatsApp with text
+      // Video fallback: download + open WhatsApp
       if(captured?.type==="video"&&captured?.blob){
-        // Auto-download video
         const a=document.createElement("a");
+        const ext=captured.mime?.includes("mp4")?"mp4":"webm";
         a.href=captured.url||URL.createObjectURL(captured.blob);
-        a.download=`YogaPath-IDY2026.webm`;
+        a.download=`YogaPath-IDY2026.${ext}`;
         document.body.appendChild(a);a.click();document.body.removeChild(a);
-        // Small delay then open WhatsApp
-        setTimeout(()=>window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank"),800);
-        alert("Video download ho gayi! Ab Gallery se open karke WhatsApp pe share karein 📲");
+        setTimeout(()=>window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank"),1000);
+        setShareHint(true);
         return;
       }
-      // Photo fallback or text only
       if(navigator.share){
         await navigator.share({title:"YogaPath - IDY 2026",text:txt});
         return;
@@ -1502,6 +1511,15 @@ export default function App() {
             ? <button className="tap" onClick={joinWall} style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginBottom:"10px",boxShadow:"0 6px 20px rgba(232,98,42,0.3)"}}>🌟 Add to District Wall →</button>
             : <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.2)",borderRadius:"12px",padding:"12px 16px",marginBottom:"10px"}}><span style={{fontSize:"18px"}}>✅</span><span style={{color:"#10A87C",fontSize:"14px",fontWeight:"600"}}>District Wall में जोड़ा गया</span></div>
           }
+          {shareHint&&(
+            <div style={{background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.2)",borderRadius:"12px",padding:"12px 16px",marginBottom:"8px",display:"flex",gap:"10px",alignItems:"flex-start"}}>
+              <span style={{fontSize:"20px",flexShrink:0}}>📲</span>
+              <div>
+                <div style={{fontSize:"12px",fontWeight:"700",color:"#10A87C",marginBottom:"3px"}}>Video download ho gayi!</div>
+                <div style={{fontSize:"11px",color:"rgba(255,255,255,0.5)",lineHeight:1.5}}>Gallery खोलें → Video select करें → Share → WhatsApp चुनें</div>
+              </div>
+            </div>
+          )}
           <button onClick={()=>setScreen("community")} style={{width:"100%",background:"transparent",color:"rgba(255,255,255,0.35)",border:"none",padding:"10px",fontSize:"12px",cursor:"pointer"}}>View District Wall →</button>
         </div>
       )}
