@@ -1471,11 +1471,7 @@ export default function App() {
             <div style={{fontSize:"10px",color:"rgba(16,168,124,0.8)",fontWeight:"700",letterSpacing:"1.5px",marginBottom:"5px"}}>✏️ WHATSAPP MESSAGE</div>
             <textarea
               value={waMsg} onChange={e=>setWaMsg(e.target.value)}
-              placeholder={"🕉 "+name+"
-📍 "+district+", Uttarakhand
-🧘 "+(asana?.name||"Yoga")+"
-
-#YogaAt100Uttarakhand #IDY2026 #AYUSH"}
+              placeholder={"🕉 "+name+"\n📍 "+district+", Uttarakhand\n🧘 "+(asana?.name||"Yoga")+"\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH"}
               rows={3}
               style={{width:"100%",background:"#13131E",border:"1.5px solid rgba(255,255,255,0.08)",borderRadius:"12px",padding:"10px 14px",color:"rgba(255,255,255,0.75)",fontSize:"12px",fontFamily:"'Sora',sans-serif",resize:"none",outline:"none",boxSizing:"border-box",lineHeight:1.6}}
             />
