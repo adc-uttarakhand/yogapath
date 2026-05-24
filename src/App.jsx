@@ -1043,7 +1043,7 @@ export default function App() {
   useEffect(()=>{ loadCommunity(); },[]);
 
   function download(){if(!captured) return;const a=document.createElement("a");a.href=captured.url;a.download=captured.type==="photo"?`yoga-frame-${Date.now()}.jpg`:`yoga-video-${Date.now()}.webm`;a.click();}
-  function async function shareWA(){
+  async function shareWA(){
     const who=role?`${name} (${role})`:name;
     const what=mode==="message"?"Yoga Message":`${asana?.name||"Yoga"}`;
     const txt=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath`;
