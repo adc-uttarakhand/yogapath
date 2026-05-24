@@ -743,7 +743,7 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     try{
       if(streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop());
       const s=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:f},width:{ideal:1280,max:1920},height:{ideal:720,max:1080}},
+        video:{facingMode:{ideal:f}},
         audio:!isPhoto
       });
       // Try to set minimum zoom (1x)
@@ -1133,17 +1133,7 @@ export default function App() {
     const a=document.createElement("a"); a.href=certUrl; a.download=`YogaPath-Certificate-${name.replace(/\s/g,"-")}.jpg`; a.click();
   }
 
-  // Auto-called when photo captured or video recorded
-  async function autoLog() {
-    if(joined) return;
-    const entry={id:Date.now(),name,district,role,mode,asana:asana?.name,date:new Date().toISOString().split('T')[0]};
-    setCommunity(prev=>[entry,...prev]);
-    setJoined(true);
-    logToSupabase({...entry,participated_on:entry.date});
-    setTimeout(()=>loadCommunity(),3000);
-  }
-
-  async function joinWall(){
+  async function async function joinWall(){
     await loadChallenge(name,district);
     const ok = await logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
     setJoined(true);
@@ -1449,7 +1439,7 @@ export default function App() {
       )}
 
       {/* ── CAMERA ── */}
-      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} lsFrame={lsFrame} ptFrame={ptFrame} onCapture={d=>{setCaptured(d);setScreen("preview");setTimeout(()=>autoLog(),400);}} onBack={()=>setScreen("frameStyle")}/>}
+      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} lsFrame={lsFrame} ptFrame={ptFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
 
       {/* ── PREVIEW ── */}
       {screen==="preview"&&captured&&(
