@@ -831,10 +831,15 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
     } else {
       setSaving(true);
       const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-      // Use existing canvasRef — keep adjust RAF loop running
       const cs=canvasRef.current.captureStream(30);
+      // ── Audio: get from video element's own stream ──
+      med.muted=false;
+      try{
+        const vs=med.captureStream?med.captureStream():med.mozCaptureStream?med.mozCaptureStream():null;
+        if(vs) vs.getAudioTracks().forEach(t=>cs.addTrack(t));
+      }catch(e){}
       const chunks=[];
-      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:2500000});
+      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:3000000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
       rec.onstop=()=>{
         const blob=new Blob(chunks,{type:mime});
@@ -842,7 +847,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         setSaving(false);
         onCapture({type:"video",blob,url,mime});
       };
-      med.muted=true;med.loop=false;med.currentTime=0;
+      med.loop=false;med.currentTime=0;
       rec.start(100);
       med.play().catch(e=>setErr("Video play error: "+e.message));
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
@@ -975,6 +980,7 @@ export default function App() {
   const [distStats,setDistStats]=useState({});
   const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
+  const [waMsg,setWaMsg]=useState("");
   const [sqFrame,setSqFrame]=useState(1);
   const [lsFrame,setLsFrame]=useState(1);
   const [ptFrame,setPtFrame]=useState(1);
@@ -1037,7 +1043,8 @@ export default function App() {
   async function shareWA(){
     const who=role?`${name} (${role})`:name;
     const what=mode==="message"?"Yoga Message":`${asana?.name||"Yoga"}`;
-    const txt=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath`;
+    const defaultMsg=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n12वाँ अन्तर्राष्ट्रीय योग दिवस 🙏\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH #YogaPath`;
+    const txt=waMsg.trim()||defaultMsg;
     try{
       let file=null;
       if(captured?.type==="photo"&&captured?.url){
@@ -1049,16 +1056,28 @@ export default function App() {
         const ext=mime.includes("mp4")?"mp4":"webm";
         file=new File([captured.blob],`YogaPath-IDY2026.${ext}`,{type:mime});
       }
+      // Try Web Share API with file
       if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
         await navigator.share({files:[file],text:txt});
         return;
       }
-      // Fallback: if file share not supported, try share with just text+title
+      // Video fallback: download first, then open WhatsApp with text
+      if(captured?.type==="video"&&captured?.blob){
+        // Auto-download video
+        const a=document.createElement("a");
+        a.href=captured.url||URL.createObjectURL(captured.blob);
+        a.download=`YogaPath-IDY2026.webm`;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        // Small delay then open WhatsApp
+        setTimeout(()=>window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank"),800);
+        alert("Video download ho gayi! Ab Gallery se open karke WhatsApp pe share karein 📲");
+        return;
+      }
+      // Photo fallback or text only
       if(navigator.share){
         await navigator.share({title:"YogaPath - IDY 2026",text:txt});
         return;
       }
-      // Last fallback: WhatsApp URL (text only)
       window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,"_blank");
     }catch(e){
       if(e?.name!=="AbortError"){
@@ -1446,6 +1465,20 @@ export default function App() {
           }
           <div style={{background:"rgba(16,168,124,0.05)",border:"1px solid rgba(16,168,124,0.12)",borderRadius:"11px",padding:"10px 14px",marginBottom:"18px",fontSize:"11px",color:"rgba(16,168,124,0.75)",lineHeight:1.5}}>
             🔒 Media saved <strong style={{color:"#10A87C"}}>only on your device</strong> — nothing uploaded to any server
+          </div>
+                    {/* Custom WhatsApp message editor */}
+          <div style={{marginBottom:"10px"}}>
+            <div style={{fontSize:"10px",color:"rgba(16,168,124,0.8)",fontWeight:"700",letterSpacing:"1.5px",marginBottom:"5px"}}>✏️ WHATSAPP MESSAGE</div>
+            <textarea
+              value={waMsg} onChange={e=>setWaMsg(e.target.value)}
+              placeholder={"🕉 "+name+"
+📍 "+district+", Uttarakhand
+🧘 "+(asana?.name||"Yoga")+"
+
+#YogaAt100Uttarakhand #IDY2026 #AYUSH"}
+              rows={3}
+              style={{width:"100%",background:"#13131E",border:"1.5px solid rgba(255,255,255,0.08)",borderRadius:"12px",padding:"10px 14px",color:"rgba(255,255,255,0.75)",fontSize:"12px",fontFamily:"'Sora',sans-serif",resize:"none",outline:"none",boxSizing:"border-box",lineHeight:1.6}}
+            />
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"10px"}}>
             <button className="tap" onClick={download} style={{background:"linear-gradient(135deg,#059669,#047857)",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"700",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",boxShadow:"0 3px 14px rgba(5,150,105,0.28)"}}>⬇ Download</button>
