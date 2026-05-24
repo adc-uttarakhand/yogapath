@@ -252,50 +252,47 @@ function drawBackground(ctx, W, H, style) {
 // ─── MAIN FRAME DRAWING ───────────────────────────────────
 function drawSquareFrame(canvas, source, frameImg, p) {
   const ctx=canvas.getContext("2d");
-  const W=1080,H=1080;
-  canvas.width=W; canvas.height=H;
+  const FW=1080, FH=1080, STRIP=88;
+  canvas.width=FW; canvas.height=FH+STRIP;
 
-  // 1. Draw user photo full canvas
+  // 1. User photo
   if(source&&(source.readyState===undefined||source.readyState>=2)){
-    const sw=source.videoWidth||source.naturalWidth||W;
-    const sh=source.videoHeight||source.naturalHeight||H;
-    const sc=Math.max(W/sw,H/sh);
-    ctx.drawImage(source,(W-sw*sc)/2,(H-sh*sc)/2,sw*sc,sh*sc);
-  } else { ctx.fillStyle="#f0f0f0"; ctx.fillRect(0,0,W,H); }
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,FW,FH); ctx.clip();
+    const sw=source.videoWidth||source.naturalWidth||FW;
+    const sh=source.videoHeight||source.naturalHeight||FH;
+    const sc=Math.max(FW/sw,FH/sh);
+    ctx.drawImage(source,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
+    ctx.restore();
+  } else { ctx.fillStyle="#e8e8e8"; ctx.fillRect(0,0,FW,FH); }
 
-  // 2. Overlay PNG frame
-  if(frameImg) ctx.drawImage(frameImg,0,0,W,H);
+  // 2. Frame PNG overlay
+  if(frameImg) ctx.drawImage(frameImg,0,0,FW,FH);
 
-  // 3. Text — single line, right below the photo window
-  // Per-frame Y position (just below transparent window, before baked quote)
-  const FRAME_TY={1:788,2:898,3:910,4:762,5:900};
-  const TY=FRAME_TY[p.sqFrame]||890;
+  // 3. Strip — fixed below frame, never overlaps
+  const sg=ctx.createLinearGradient(0,FH,0,FH+STRIP);
+  sg.addColorStop(0,"#0A1A0A"); sg.addColorStop(1,"#060F06");
+  ctx.fillStyle=sg; ctx.fillRect(0,FH,FW,STRIP);
+  ctx.fillStyle="#E8622A"; ctx.fillRect(0,FH,FW,4);
 
-  // Build single compact line: Name | Role | District | Asana
+  // 4. ONE LINE — auto-shrink font until it fits
+  const pin=String.fromCodePoint(0x1F4CD);
+  const sep="  |  ";
   const parts=[p.name||"Yogi"];
   if(p.role) parts.push(p.role);
-  if(p.district) parts.push(p.district);
+  if(p.district) parts.push(pin+" "+p.district);
   if(p.mode==="message") parts.push("Yoga Message");
   else if(p.asana) parts.push(p.asana.name+" | "+p.asana.sanskrit);
-  const line=parts.join("  │  ");
+  const line=parts.join(sep);
 
-  // Measure text and draw pill background
-  ctx.font="bold 26px Arial,sans-serif";
-  const tw=ctx.measureText(line).width;
-  const PAD=28, BH=52;
-  const bx=W/2-tw/2-PAD, by=TY-34;
+  const MAX_W=FW-48;
+  let fs=28;
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  while(ctx.measureText(line).width>MAX_W && fs>13){ fs--; ctx.font="bold "+fs+"px Arial,sans-serif"; }
 
-  // Dark pill
-  ctx.fillStyle="rgba(0,0,0,0.68)";
-  ctx.beginPath();
-  ctx.roundRect(Math.max(20,bx), by, Math.min(W-40,tw+PAD*2), BH, 10);
-  ctx.fill();
-
-  // Text on pill
-  ctx.textAlign="center";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillStyle="#FFFFFF";
-  ctx.font="bold 26px Arial,sans-serif";
-  ctx.fillText(line, W/2, TY);
+  ctx.fillText(line, FW/2, FH+STRIP/2+4);
+  ctx.textBaseline="alphabetic";
 }
 
 
@@ -493,8 +490,13 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     if(cv.height!==CH) cv.height=CH;
     const sqImg=sqImgRef.current;
     if(orientation==="square"&&sqImg){
+        // Square+PNG: canvas is 1080x1208 (frame + strip)
+        if(cv.width!==1080) cv.width=1080;
+        if(cv.height!==1168) cv.height=1168;
         drawSquareFrame(cv,videoRef.current,sqImg,{name,role,district,mode,asana,msg,sqFrame});
       } else {
+        if(cv.width!==CW) cv.width=CW;
+        if(cv.height!==CH) cv.height=CH;
         drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
       }
     animRef.current=requestAnimationFrame(drawLoop);
