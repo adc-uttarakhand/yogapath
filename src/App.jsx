@@ -254,29 +254,50 @@ function drawSquareFrame(canvas, source, frameImg, p) {
   const ctx=canvas.getContext("2d");
   const W=1080,H=1080;
   canvas.width=W; canvas.height=H;
+
+  // 1. Draw user photo full canvas
   if(source&&(source.readyState===undefined||source.readyState>=2)){
     const sw=source.videoWidth||source.naturalWidth||W;
     const sh=source.videoHeight||source.naturalHeight||H;
     const sc=Math.max(W/sw,H/sh);
     ctx.drawImage(source,(W-sw*sc)/2,(H-sh*sc)/2,sw*sc,sh*sc);
-  } else { ctx.fillStyle="#1a2a1a"; ctx.fillRect(0,0,W,H); }
+  } else { ctx.fillStyle="#f0f0f0"; ctx.fillRect(0,0,W,H); }
+
+  // 2. Overlay PNG frame
   if(frameImg) ctx.drawImage(frameImg,0,0,W,H);
-  const TY=870;
-  const gr=ctx.createLinearGradient(0,TY,0,H);
-  gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.3,"rgba(0,0,0,0.72)"); gr.addColorStop(1,"rgba(0,0,0,0.88)");
-  ctx.fillStyle=gr; ctx.fillRect(0,TY,W,H-TY);
+
+  // 3. Text — single line, right below the photo window
+  // Per-frame Y position (just below transparent window, before baked quote)
+  const FRAME_TY={1:788,2:898,3:910,4:762,5:900};
+  const TY=FRAME_TY[p.sqFrame]||890;
+
+  // Build single compact line: Name | Role | District | Asana
+  const parts=[p.name||"Yogi"];
+  if(p.role) parts.push(p.role);
+  if(p.district) parts.push(p.district);
+  if(p.mode==="message") parts.push("Yoga Message");
+  else if(p.asana) parts.push(p.asana.name+" | "+p.asana.sanskrit);
+  const line=parts.join("  │  ");
+
+  // Measure text and draw pill background
+  ctx.font="bold 26px Arial,sans-serif";
+  const tw=ctx.measureText(line).width;
+  const PAD=28, BH=52;
+  const bx=W/2-tw/2-PAD, by=TY-34;
+
+  // Dark pill
+  ctx.fillStyle="rgba(0,0,0,0.68)";
+  ctx.beginPath();
+  ctx.roundRect(Math.max(20,bx), by, Math.min(W-40,tw+PAD*2), BH, 10);
+  ctx.fill();
+
+  // Text on pill
   ctx.textAlign="center";
-  ctx.font="bold 46px Arial,sans-serif"; ctx.fillStyle="#FFFFFF";
-  ctx.fillText(p.name||"Yogi",W/2,TY+62);
-  if(p.role){ ctx.font="28px Arial,sans-serif"; ctx.fillStyle="rgba(255,200,70,0.95)"; ctx.fillText(p.role,W/2,TY+104); }
-  ctx.font="26px Arial,sans-serif"; ctx.fillStyle="rgba(180,220,180,0.88)";
-  const pin = String.fromCodePoint(0x1F4CD);
-  ctx.fillText(pin+" "+(p.district||"Uttarakhand"),W/2,TY+(p.role?142:108));
-  const lbl=p.mode==="message"?"Yoga Message":(p.asana?p.asana.name+" | "+p.asana.sanskrit:"");
-  if(lbl){ ctx.font="bold 24px Arial,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.fillText(lbl,W/2,TY+(p.role?180:146)); }
-  ctx.font="16px Arial,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.28)";
-  ctx.fillText("AYUSH Uttarakhand  |  International Day of Yoga 2026",W/2,H-14);
+  ctx.fillStyle="#FFFFFF";
+  ctx.font="bold 26px Arial,sans-serif";
+  ctx.fillText(line, W/2, TY);
 }
+
 
 function drawAYUSHFrame(canvas, source, { asana, name, district, role, mode, msg, bgStyle="dark", orientation="portrait" }) {
   const ctx = canvas.getContext("2d");
@@ -446,9 +467,18 @@ select.inp{colorScheme:dark;} select.inp option{background:#0C150C;}
 `;
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
-function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, frameImg, onCapture, onBack }) {
-  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null);
+function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, onCapture, onBack }) {
+  const videoRef=useRef(null), canvasRef=useRef(null), animRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]), streamRef=useRef(null), sqImgRef=useRef(null);
   const [camState,setCamState]=useState("idle");
+  // Load square PNG frame directly inside CameraScreen
+  useEffect(()=>{
+    if(orientation==="square"&&sqFrame){
+      const img=new Image();
+      img.onload=()=>{ sqImgRef.current=img; };
+      img.onerror=()=>{ sqImgRef.current=null; };
+      img.src=`/frames/frame-sq-${sqFrame}.png`;
+    } else { sqImgRef.current=null; }
+  },[orientation,sqFrame]);
   const [facing,setFacing]=useState("user");
   const [secs,setSecs]=useState(0);
   const [err,setErr]=useState(null);
@@ -461,13 +491,14 @@ function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orienta
     const cv=canvasRef.current;
     if(cv.width!==CW) cv.width=CW;
     if(cv.height!==CH) cv.height=CH;
-    if(orientation==="square"&&frameImg){
-        drawSquareFrame(cv,videoRef.current,frameImg,{name,role,district,mode,asana,msg});
+    const sqImg=sqImgRef.current;
+    if(orientation==="square"&&sqImg){
+        drawSquareFrame(cv,videoRef.current,sqImg,{name,role,district,mode,asana,msg,sqFrame});
       } else {
         drawAYUSHFrame(cv,videoRef.current,{asana,name,district,role,mode,msg,bgStyle,orientation});
       }
     animRef.current=requestAnimationFrame(drawLoop);
-  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,frameImg,CW,CH]);
+  },[asana,name,district,role,mode,msg,bgStyle,orientation,sqFrame,CW,CH]);
 
   async function startCam(f=facing){
     try{
@@ -568,7 +599,6 @@ export default function App() {
   const [joined,setJoined]=useState(false);
   const [showRoleDD,setShowRoleDD]=useState(false);
   const [sqFrame,setSqFrame]=useState(1);
-  const [frameImgs,setFrameImgs]=useState({});
   const [installPrompt,setInstallPrompt]=useState(null);
   const [isInstalled,setIsInstalled]=useState(false);
   const [isIOS,setIsIOS]=useState(false);
@@ -582,14 +612,6 @@ export default function App() {
     const handler=(e)=>{ e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     return ()=>window.removeEventListener('beforeinstallprompt', handler);
-  },[]);
-
-  useEffect(()=>{
-    [1,2,3,4,5].forEach(i=>{
-      const img=new Image();
-      img.onload=()=>setFrameImgs(prev=>({...prev,[i]:img}));
-      img.src=`/frames/frame-sq-${i}.png`;
-    });
   },[]);
 
   async function handleInstall(){
@@ -922,7 +944,7 @@ export default function App() {
       )}
 
       {/* ── CAMERA ── */}
-      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} frameImg={orientation==="square"?frameImgs[sqFrame]:null} sqFrame={sqFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
+      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
 
       {/* ── PREVIEW ── */}
       {screen==="preview"&&captured&&(
