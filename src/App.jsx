@@ -821,7 +821,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
 
   // ── Save ──
-  function doSave(){
+  async function doSave(){
     const med=mediaRef.current;
     if(!med){setErr("No media selected");return;}
     const isVid=med.tagName==="VIDEO";
@@ -831,13 +831,32 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
     } else {
       setSaving(true);
       const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      // ── Prepare video ──
+      med.muted=false; med.volume=1; med.loop=false; med.currentTime=0;
+      await new Promise(r=>{med.onseeked=r; if(med.readyState>=2)r();});
+      // ── Canvas stream (video) ──
       const cs=canvasRef.current.captureStream(30);
-      // ── Audio: get from video element's own stream ──
-      med.muted=false;
+      // ── Audio: try 3 methods in order ──
+      let gotAudio=false;
+      // Method 1: captureStream on video element
       try{
         const vs=med.captureStream?med.captureStream():med.mozCaptureStream?med.mozCaptureStream():null;
-        if(vs) vs.getAudioTracks().forEach(t=>cs.addTrack(t));
+        const atracks=vs?vs.getAudioTracks():[];
+        if(atracks.length>0){atracks.forEach(t=>cs.addTrack(t));gotAudio=true;}
       }catch(e){}
+      // Method 2: Web Audio API (works on Android Chrome)
+      if(!gotAudio){
+        try{
+          const ac=new(window.AudioContext||window.webkitAudioContext)();
+          if(ac.state==="suspended") await ac.resume();
+          const src=ac.createMediaElementSource(med);
+          const dst=ac.createMediaStreamDestination();
+          src.connect(dst);
+          // Do NOT connect src to ac.destination — avoids double playback
+          const atracks=dst.stream.getAudioTracks();
+          if(atracks.length>0){atracks.forEach(t=>cs.addTrack(t));gotAudio=true;}
+        }catch(e){}
+      }
       const chunks=[];
       const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:3000000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
@@ -847,7 +866,6 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         setSaving(false);
         onCapture({type:"video",blob,url,mime});
       };
-      med.loop=false;med.currentTime=0;
       rec.start(100);
       med.play().catch(e=>setErr("Video play error: "+e.message));
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
