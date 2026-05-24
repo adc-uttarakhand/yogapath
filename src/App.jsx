@@ -698,7 +698,6 @@ export default function App() {
   const [distStats,setDistStats]=useState({});
   const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
-  const [showRoleDD,setShowRoleDD]=useState(false);
   const [sqFrame,setSqFrame]=useState(1);
   const [lsFrame,setLsFrame]=useState(1);
   const [ptFrame,setPtFrame]=useState(1);
@@ -745,6 +744,16 @@ export default function App() {
 
   function download(){if(!captured) return;const a=document.createElement("a");a.href=captured.url;a.download=captured.type==="photo"?`yoga-frame-${Date.now()}.jpg`:`yoga-video-${Date.now()}.webm`;a.click();}
   function shareWA(){const who=role?`${name} (${role})`:name;const what=mode==="message"?"Yoga Message":`${asana?.name}`;const t=`🕉 ${who}\n📍 ${district}, Uttarakhand\n🧘 ${what}\n\n"${msg}"\n\n#YogaAt100Uttarakhand #IDY2026 #AYUSH`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,"_blank");}
+  // Auto-called when photo captured or video recorded
+  async function autoLog() {
+    if(joined) return;
+    const entry={id:Date.now(),name,district,role,mode,asana:asana?.name,date:new Date().toISOString().split('T')[0]};
+    setCommunity(prev=>[entry,...prev]);
+    setJoined(true);
+    logToSupabase({...entry,participated_on:entry.date});
+    setTimeout(()=>loadCommunity(),3000);
+  }
+
   async function joinWall(){
     const ok = await logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
     setJoined(true);
@@ -895,26 +904,20 @@ export default function App() {
           <div style={{marginBottom:"20px"}}><label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"8px"}}>District</label>
             <select className="inp" value={district} onChange={e=>setDistrict(e.target.value)} style={district?{borderColor:"#10A87C",colorScheme:"dark"}:{colorScheme:"dark"}}><option value="">जिला चुनें</option>{DISTRICTS.map(d=><option key={d} value={d}>{d}</option>)}</select>
           </div>
-          <div style={{marginBottom:"44px",position:"relative"}}>
-            <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"8px"}}>Designation / Role</label>
-            <div onClick={()=>setShowRoleDD(!showRoleDD)} className="inp" style={{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",borderColor:role?"#10A87C":"#142014",color:role?"#fff":"#2A3A2A"}}>
-              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{role||"भूमिका चुनें"}</span>
-              <span style={{color:"#1A4A1A",marginLeft:"8px"}}>{showRoleDD?"▲":"▼"}</span>
+          <div style={{marginBottom:"44px"}}>
+            <label style={{display:"block",color:"#1A5A1A",fontSize:"11px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"8px"}}>Designation <span style={{color:"#E8622A",letterSpacing:"0px",textTransform:"none",fontSize:"12px"}}>(पदनाम)</span></label>
+            <input className="inp" value={role} onChange={e=>setRole(e.target.value)}
+              placeholder="अपना पदनाम लिखें — DM, MLA, Gram Pradhan, AYUSH Doctor..."
+              style={role?{borderColor:"#10A87C"}:{}}/>
+            <div style={{marginTop:"8px",display:"flex",flexWrap:"wrap",gap:"6px"}}>
+              {["DM","MLA","Gram Pradhan","AYUSH Doctor","Yoga Instructor","General Public"].map(s=>(
+                <div key={s} onClick={()=>setRole(s)} className="tap"
+                  style={{background:role===s?"rgba(16,168,124,0.15)":"#0A120A",border:`1px solid ${role===s?"#10A87C":"#101E10"}`,
+                  borderRadius:"20px",padding:"5px 12px",fontSize:"12px",color:role===s?"#10A87C":"#1A5A1A",cursor:"pointer"}}>
+                  {s}
+                </div>
+              ))}
             </div>
-            {showRoleDD&&(
-              <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#0C150C",border:"1px solid #1A2A1A",borderRadius:"12px",zIndex:100,maxHeight:"260px",overflowY:"auto"}}>
-                {ROLE_GROUPS.map(g=>(
-                  <div key={g.group}>
-                    <div style={{padding:"7px 14px",color:"#1A5A1A",fontSize:"10px",fontWeight:"700",letterSpacing:"1.5px",textTransform:"uppercase",background:"#080F08",borderBottom:"1px solid #0F1A0F"}}>{g.group}</div>
-                    {g.items.map(item=>(
-                      <div key={item} onClick={()=>{setRole(item);setShowRoleDD(false);}} style={{padding:"11px 14px",cursor:"pointer",fontSize:"13px",color:role===item?"#10A87C":"#4A7A4A",borderBottom:"1px solid #0C160C"}}>
-                        {role===item&&"✓ "}{item}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           <button className="tap" onClick={()=>{if(name.trim()&&district&&role) setScreen("modeSelect");}} style={{width:"100%",background:name&&district&&role?"linear-gradient(135deg,#E8622A,#C44E1A)":"#0C150C",color:name&&district&&role?"white":"#1A3A1A",border:"none",borderRadius:"16px",padding:"17px",fontSize:"16px",fontWeight:"700",cursor:name&&district&&role?"pointer":"not-allowed",boxShadow:name&&district&&role?"0 8px 22px rgba(232,98,42,0.3)":"none",transition:"all 0.3s"}}>
             Continue →
@@ -1073,7 +1076,7 @@ export default function App() {
       )}
 
       {/* ── CAMERA ── */}
-      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} lsFrame={lsFrame} ptFrame={ptFrame} onCapture={d=>{setCaptured(d);setScreen("preview");}} onBack={()=>setScreen("frameStyle")}/>}
+      {screen==="camera"&&<CameraScreen mode={mode} asana={asana} name={name} district={district} role={role} msg={msg} bgStyle={bgStyle} orientation={orientation} sqFrame={sqFrame} lsFrame={lsFrame} ptFrame={ptFrame} onCapture={d=>{setCaptured(d);setScreen("preview");setTimeout(()=>autoLog(),400);}} onBack={()=>setScreen("frameStyle")}/>}
 
       {/* ── PREVIEW ── */}
       {screen==="preview"&&captured&&(
@@ -1093,9 +1096,12 @@ export default function App() {
             <button className="tap" onClick={download} style={{background:"linear-gradient(135deg,#059669,#047857)",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"700",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",boxShadow:"0 3px 14px rgba(5,150,105,0.28)"}}>⬇ Download</button>
             <button className="tap" onClick={shareWA} style={{background:"linear-gradient(135deg,#25D366,#1DAB52)",color:"white",border:"none",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"700",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",boxShadow:"0 3px 14px rgba(37,211,102,0.28)"}}>📤 WhatsApp</button>
           </div>
-          <button className="tap" onClick={joinWall} style={{width:"100%",background:joined?"#090F09":"linear-gradient(135deg,#E8622A,#C44E1A)",color:joined?"#1A4A1A":"white",border:joined?"1px solid #101E10":"none",borderRadius:"13px",padding:"14px",fontSize:"15px",fontWeight:"700",cursor:"pointer",marginBottom:"10px",boxShadow:joined?"none":"0 5px 18px rgba(232,98,42,0.28)"}}>
-            {joined?"✓ Added to District Wall":"🌟 Add to District Wall →"}
-          </button>
+          {joined&&(
+            <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(16,168,124,0.08)",border:"1px solid rgba(16,168,124,0.2)",borderRadius:"12px",padding:"12px 16px",marginBottom:"10px"}}>
+              <span style={{fontSize:"18px"}}>✅</span>
+              <span style={{color:"#10A87C",fontSize:"14px",fontWeight:"600"}}>District Wall में जोड़ा गया</span>
+            </div>
+          )}
           <button onClick={()=>setScreen("community")} style={{width:"100%",background:"transparent",color:"#1A3A1A",border:"1px solid #0C1A0C",borderRadius:"13px",padding:"12px",fontSize:"13px",cursor:"pointer"}}>
             View District Wall →
           </button>
