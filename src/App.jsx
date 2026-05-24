@@ -1133,7 +1133,7 @@ export default function App() {
     const a=document.createElement("a"); a.href=certUrl; a.download=`YogaPath-Certificate-${name.replace(/\s/g,"-")}.jpg`; a.click();
   }
 
-  async function async function joinWall(){
+  async function joinWall(){
     await loadChallenge(name,district);
     const ok = await logToSupabase({name,district,role,mode,asana:asana?.name,participated_on:new Date().toISOString().split("T")[0]});
     setJoined(true);
