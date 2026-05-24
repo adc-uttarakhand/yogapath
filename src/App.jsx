@@ -680,356 +680,262 @@ select.inp option{background:#13131E;color:#fff;}
 
 // ─── CAMERA SCREEN ────────────────────────────────────────
 
-function drawStrip(ctx, FW, FH, STRIP, p) {
-  ctx.fillStyle="#0A0A14"; ctx.fillRect(0,FH,FW,STRIP);
-  ctx.fillStyle="#E8622A"; ctx.fillRect(0,FH,FW,4);
-  const pin="\uD83D\uDCCD"; const sep="   |   ";
+function drawStrip(ctx,FW,FH,STRIP,p){
+  ctx.fillStyle="#0A0A14";ctx.fillRect(0,FH,FW,STRIP);
+  ctx.fillStyle="#E8622A";ctx.fillRect(0,FH,FW,4);
+  const pin="\uD83D\uDCCD",sep="   |   ";
   const parts=[p.name||"Yogi"];
-  if(p.role) parts.push(p.role);
-  if(p.district) parts.push(pin+" "+p.district);
-  if(p.asana) parts.push(p.asana.name||p.asana);
+  if(p.role)parts.push(p.role);
+  if(p.district)parts.push(pin+" "+p.district);
+  if(p.asana)parts.push(p.asana.name||p.asana);
   const line=parts.join(sep);
-  const MAX_W=FW-48; let fs=26;
+  const MAX_W=FW-48;let fs=26;
   ctx.font="bold "+fs+"px Arial,sans-serif";
   while(ctx.measureText(line).width>MAX_W&&fs>11){fs--;ctx.font="bold "+fs+"px Arial,sans-serif";}
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillStyle="#FFF"; ctx.fillText(line,FW/2,FH+STRIP/2+4);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="#FFF";ctx.fillText(line,FW/2,FH+STRIP/2+4);
   ctx.textBaseline="alphabetic";
 }
 
-function drawFrameAdjust(canvas, photo, frameImg, FW, FH, STRIP, off, sc, p) {
+function drawFrameAdjust(canvas,media,frameImg,FW,FH,STRIP,off,sc,p){
   const ctx=canvas.getContext("2d");
-  if(canvas.width!==FW) canvas.width=FW;
-  if(canvas.height!==FH+STRIP) canvas.height=FH+STRIP;
-  ctx.fillStyle="#111"; ctx.fillRect(0,0,FW,FH);
-  if(photo){
-    const pw=photo.naturalWidth||photo.videoWidth||FW;
-    const ph=photo.naturalHeight||photo.videoHeight||FH;
-    const base=Math.min(FW/pw,FH/ph);
-    const dw=pw*base*sc, dh=ph*base*sc;
-    const dx=(FW-dw)/2+off.x, dy=(FH-dh)/2+off.y;
-    ctx.drawImage(photo,dx,dy,dw,dh);
+  if(canvas.width!==FW)canvas.width=FW;
+  if(canvas.height!==FH+STRIP)canvas.height=FH+STRIP;
+  ctx.fillStyle="#111";ctx.fillRect(0,0,FW,FH);
+  if(media){
+    const pw=media.naturalWidth||media.videoWidth||FW;
+    const ph=media.naturalHeight||media.videoHeight||FH;
+    if(pw&&ph){
+      const base=Math.min(FW/pw,FH/ph);
+      const dw=pw*base*sc,dh=ph*base*sc;
+      ctx.drawImage(media,(FW-dw)/2+off.x,(FH-dh)/2+off.y,dw,dh);
+    }
   }
-  if(frameImg) ctx.drawImage(frameImg,0,0,FW,FH);
+  if(frameImg)ctx.drawImage(frameImg,0,0,FW,FH);
   drawStrip(ctx,FW,FH,STRIP,p);
 }
 
-function CameraScreen({ mode, asana, name, district, role, msg, bgStyle, orientation, sqFrame, lsFrame, ptFrame, onCapture, onBack }) {
-  const canvasRef=useRef(null), animRef=useRef(null),
-        nativeCamRef=useRef(null), galleryRef=useRef(null),
-        sqImgRef=useRef(null), lsImgRef=useRef(null), ptImgRef=useRef(null),
+function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqFrame,lsFrame,ptFrame,onCapture,onBack}){
+  const canvasRef=useRef(null),animRef=useRef(null),
+        nativeCamRef=useRef(null),galleryRef=useRef(null),
+        sqImgRef=useRef(null),lsImgRef=useRef(null),ptImgRef=useRef(null),
         mediaRef=useRef(null),
-        offsetRef=useRef({x:0,y:0}), scaleRef=useRef(1),
+        offsetRef=useRef({x:0,y:0}),scaleRef=useRef(1),
         touchRef=useRef(null),
-        recordedMimeRef=useRef("video/webm"),
-        // video recording refs
-        videoRef=useRef(null), recRef=useRef(null),
-        chunksRef=useRef([]), streamRef=useRef(null);
+        mimeRef=useRef("video/mp4");
 
-  const [phase,setPhase]=useState("pick");   // pick | adjust | recording | processing
+  const [phase,setPhase]=useState("pick");
   const [scale,setScale]=useState(1);
   const [offset,setOffset]=useState({x:0,y:0});
-  const [secs,setSecs]=useState(0);
+  const [saving,setSaving]=useState(false);
   const [err,setErr]=useState(null);
-  const [facing,setFacing]=useState("environment");
-  const [frameReady,setFrameReady]=useState(false);
 
   const isPhoto=mode==="photo";
   const ori=ORIENTATIONS.find(o=>o.id===orientation)||ORIENTATIONS[0];
-  const CW=ori.w, CH=ori.h;
+  const FW=orientation==="square"?1080:orientation==="portrait"?720:orientation==="landscape"?1280:ori.w;
+  const FH=orientation==="square"?1080:orientation==="portrait"?1280:orientation==="landscape"?640:ori.h;
   const STRIP=88;
-  const FW = orientation==="square"?1080 : orientation==="portrait"?720 : orientation==="landscape"?1280 : CW;
-  const FH = orientation==="square"?1080 : orientation==="portrait"?1280 : orientation==="landscape"?640 : CH;
 
   // ── Load frame PNGs ──
-  const frameImg = orientation==="square"?sqImgRef.current : orientation==="portrait"?ptImgRef.current : orientation==="landscape"?lsImgRef.current : null;
-
   useEffect(()=>{
-    const load=(ref,src)=>{const img=new Image();img.onload=()=>{ref.current=img;setFrameReady(f=>!f);};img.src=src;};
-    if(orientation==="square"&&sqFrame)  load(sqImgRef,`/frames/frame-sq-${sqFrame}.png`);
+    const load=(ref,src)=>{const img=new Image();img.onload=()=>ref.current=img;img.src=src;};
+    if(orientation==="square"&&sqFrame) load(sqImgRef,`/frames/frame-sq-${sqFrame}.png`);
     if(orientation==="portrait"&&ptFrame) load(ptImgRef,`/frames/frame-pt-${ptFrame}.png`);
     if(orientation==="landscape"&&lsFrame) load(lsImgRef,`/frames/frame-ls-${lsFrame}.png`);
   },[orientation,sqFrame,ptFrame,lsFrame]);
 
-  // ── Redraw on every frame when in adjust phase ──
+  const getFrame=()=>orientation==="square"?sqImgRef.current:orientation==="portrait"?ptImgRef.current:orientation==="landscape"?lsImgRef.current:null;
+
+  // ── RAF loop in adjust phase ──
   useEffect(()=>{
-    if(phase!=="adjust") return;
+    if(phase!=="adjust")return;
     let raf;
     const loop=()=>{
-      if(canvasRef.current&&mediaRef.current){
-        const fi=orientation==="square"?sqImgRef.current:orientation==="portrait"?ptImgRef.current:orientation==="landscape"?lsImgRef.current:null;
-        drawFrameAdjust(canvasRef.current,mediaRef.current,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
-      }
+      if(canvasRef.current&&mediaRef.current)
+        drawFrameAdjust(canvasRef.current,mediaRef.current,getFrame(),FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
       raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
     return()=>cancelAnimationFrame(raf);
-  },[phase,orientation,FW,FH,name,role,district,asana,mode,frameReady]);
+  },[phase,FW,FH,name,role,district,asana,mode,orientation,sqFrame,ptFrame,lsFrame]);
 
-  // ── Native camera / Gallery pick ──
-  function handleFilePick(e){
-    const file=e.target.files?.[0]; if(!file) return;
+  // ── File pick handler (native cam + gallery) ──
+  function handleFile(e){
+    const file=e.target.files?.[0];if(!file)return;
+    setErr(null);
     const url=URL.createObjectURL(file);
     if(file.type.startsWith("image/")){
       const img=new Image();
       img.onload=()=>{
         mediaRef.current=img;
-        offsetRef.current={x:0,y:0}; scaleRef.current=1;
-        setOffset({x:0,y:0}); setScale(1);
-        setPhase("adjust");
+        offsetRef.current={x:0,y:0};scaleRef.current=1;
+        setOffset({x:0,y:0});setScale(1);setPhase("adjust");
       };
+      img.onerror=()=>setErr("Image load failed");
       img.src=url;
     } else if(file.type.startsWith("video/")){
+      mimeRef.current=file.type||"video/mp4";
       const vid=document.createElement("video");
-      vid.muted=true; vid.src=url;
+      vid.src=url;vid.muted=true;vid.loop=true;vid.playsInline=true;
       vid.onloadedmetadata=()=>{
         mediaRef.current=vid;
-        offsetRef.current={x:0,y:0}; scaleRef.current=1;
-        setOffset({x:0,y:0}); setScale(1);
+        offsetRef.current={x:0,y:0};scaleRef.current=1;
+        setOffset({x:0,y:0});setScale(1);
         vid.play().catch(()=>{});
         setPhase("adjust");
       };
+      vid.onerror=()=>setErr("Video load failed");
+    } else {
+      setErr("Unsupported file type");
     }
     e.target.value="";
   }
 
   // ── Touch: pan + pinch-zoom ──
   function onTouchStart(e){
-    if(phase!=="adjust") return;
+    if(phase!=="adjust")return;
     if(e.touches.length===1){
       const rect=canvasRef.current.getBoundingClientRect();
-      const cssToCanvas=(FW)/rect.width;
-      touchRef.current={type:"pan",lx:e.touches[0].clientX,ly:e.touches[0].clientY,css:cssToCanvas};
+      const k=FW/rect.width;
+      touchRef.current={type:"pan",lx:e.touches[0].clientX,ly:e.touches[0].clientY,k};
     } else if(e.touches.length===2){
       const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       touchRef.current={type:"pinch",d0:d,s0:scaleRef.current};
     }
   }
   function onTouchMove(e){
-    if(phase!=="adjust"||!touchRef.current) return;
+    if(phase!=="adjust"||!touchRef.current)return;
     e.preventDefault();
     const tr=touchRef.current;
     if(tr.type==="pan"&&e.touches.length===1){
-      const k=tr.css;
-      offsetRef.current={x:offsetRef.current.x+(e.touches[0].clientX-tr.lx)*k, y:offsetRef.current.y+(e.touches[0].clientY-tr.ly)*k};
+      offsetRef.current={x:offsetRef.current.x+(e.touches[0].clientX-tr.lx)*tr.k,y:offsetRef.current.y+(e.touches[0].clientY-tr.ly)*tr.k};
       touchRef.current={...tr,lx:e.touches[0].clientX,ly:e.touches[0].clientY};
     } else if(tr.type==="pinch"&&e.touches.length===2){
       const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      scaleRef.current=Math.max(0.25,Math.min(6,tr.s0*(d/tr.d0)));
+      scaleRef.current=Math.max(0.2,Math.min(6,tr.s0*(d/tr.d0)));
     }
   }
-  function onTouchEnd(){touchRef.current=null; setScale(scaleRef.current); setOffset({...offsetRef.current});}
+  function onTouchEnd(){touchRef.current=null;setScale(scaleRef.current);setOffset({...offsetRef.current});}
 
-  // ── Zoom buttons ──
-  function zoomBy(delta){
-    const ns=Math.max(0.25,Math.min(6,scaleRef.current+delta));
-    scaleRef.current=ns; setScale(ns);
-  }
-  function resetAdjust(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
+  function zoomBy(d){const s=Math.max(0.2,Math.min(6,scaleRef.current+d));scaleRef.current=s;setScale(s);}
+  function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
 
-  // ── Capture final ──
-  function confirmCapture(){
+  // ── Save ──
+  function doSave(){
     const med=mediaRef.current;
-    const isVid=med&&(med.tagName==="VIDEO"||med.videoWidth>0);
+    const isVid=med&&(med.tagName==="VIDEO");
     if(!isVid){
-      // Photo: direct canvas export
+      // Photo: export canvas directly
       const url=canvasRef.current.toDataURL("image/jpeg",0.94);
       onCapture({type:"photo",url});
     } else {
-      // Video: re-encode canvas while video plays
-      setPhase("processing");
-      const mime=recordedMimeRef.current||"video/webm";
+      // Video: replay through canvas, record canvas stream
+      setSaving(true);
+      const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
       const cs=canvasRef.current.captureStream(30);
+      // Try to add audio
+      try{const ac=new AudioContext();const src=ac.createMediaElementSource(med);const dst=ac.createMediaStreamDestination();src.connect(dst);src.connect(ac.destination);dst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));}catch(e){}
       const chunks=[];
       const rec=new MediaRecorder(cs,{mimeType:mime});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{
-        const blob=new Blob(chunks,{type:mime});
-        onCapture({type:"video",blob,mime});
-      };
-      med.currentTime=0;
-      med.muted=false;
-      // Add audio from video to canvas stream
-      try{
-        const actx=new AudioContext();
-        const src=actx.createMediaElementSource(med);
-        const dst=actx.createMediaStreamDestination();
-        src.connect(dst); src.connect(actx.destination);
-        dst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));
-      }catch(e){}
+      rec.onstop=()=>{setSaving(false);const blob=new Blob(chunks,{type:mime});onCapture({type:"video",blob,mime});};
+      med.muted=false;med.loop=false;med.currentTime=0;
+      med.play().catch(()=>{});
       rec.start(200);
-      med.play();
       med.onended=()=>rec.stop();
+      // Safety: stop after 3min max
+      setTimeout(()=>{if(rec.state==="recording")rec.stop();},180000);
     }
   }
 
-  // ── Video recording (live canvas) ──
-  async function startLiveRec(f=facing){
-    try{
-      if(streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop());
-      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:f}},audio:true});
-      streamRef.current=s; videoRef.current.srcObject=s; await videoRef.current.play();
-      // draw loop for video recording
-      const fi=orientation==="square"?sqImgRef.current:orientation==="portrait"?ptImgRef.current:orientation==="landscape"?lsImgRef.current:null;
-      const loop=()=>{
-        if(!canvasRef.current||!videoRef.current) return;
-        if(canvasRef.current.width!==FW) canvasRef.current.width=FW;
-        if(canvasRef.current.height!==FH+STRIP) canvasRef.current.height=FH+STRIP;
-        const ctx=canvasRef.current.getContext("2d");
-        const vid=videoRef.current;
-        const sw=vid.videoWidth||FW, sh=vid.videoHeight||FH;
-        const bgSc=Math.max(FW/sw,FH/sh)*1.06;
-        ctx.save(); ctx.filter="blur(12px)";
-        ctx.drawImage(vid,(FW-sw*bgSc)/2,(FH-sh*bgSc)/2,sw*bgSc,sh*bgSc);
-        ctx.restore();
-        const sc=Math.min(FW/sw,FH/sh);
-        ctx.drawImage(vid,(FW-sw*sc)/2,(FH-sh*sc)/2,sw*sc,sh*sc);
-        if(fi) ctx.drawImage(fi,0,0,FW,FH);
-        drawStrip(ctx,FW,FH,STRIP,{name,role,district,asana,mode});
-        animRef.current=requestAnimationFrame(loop);
-      };
-      animRef.current=requestAnimationFrame(loop);
-      setPhase("recording"); setErr(null); setSecs(0);
-    }catch(e){setErr(e.name==="NotAllowedError"?"Camera permission denied.":e.message);}
-  }
-  function flipCam(){const f=facing==="user"?"environment":"user";setFacing(f);startLiveRec(f);}
-  function startRec(){
-    chunksRef.current=[];
-    const cs=canvasRef.current.captureStream(30);
-    (streamRef.current?.getAudioTracks()||[]).forEach(t=>cs.addTrack(t));
-    const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"";
-    recRef.current=new MediaRecorder(cs,{mimeType:mime});
-    recRef.current.ondataavailable=e=>{if(e.data.size>0)chunksRef.current.push(e.data);};
-    recRef.current.onstop=()=>{
-      cancelAnimationFrame(animRef.current);
-      streamRef.current?.getTracks().forEach(t=>t.stop()); streamRef.current=null;
-      const blob=new Blob(chunksRef.current,{type:mime});
-      // Load recorded video into adjust phase
-      const url=URL.createObjectURL(blob);
-      const vid=document.createElement("video");
-      vid.src=url; vid.muted=false; vid.loop=true;
-      vid.onloadedmetadata=()=>{
-        mediaRef.current=vid;
-        recordedMimeRef.current=mime;
-        offsetRef.current={x:0,y:0}; scaleRef.current=1;
-        setOffset({x:0,y:0}); setScale(1);
-        vid.play().catch(()=>{});
-        setPhase("adjust");
-      };
-    };
-    recRef.current.start(200); setSecs(0);
-  }
-  function stopRec(){recRef.current?.stop(); setPhase("processing");}
-  useEffect(()=>{if(phase!=="recording")return;const t=setInterval(()=>setSecs(s=>s+1),1000);return()=>clearInterval(t);},[phase]);
-  useEffect(()=>()=>{cancelAnimationFrame(animRef.current);streamRef.current?.getTracks().forEach(t=>t.stop());},[]);
-  const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  useEffect(()=>()=>{cancelAnimationFrame(animRef.current);},[]);
 
-  // ── RENDER ──
-  return (
+  const acceptType=isPhoto?"image/*":"video/*";
+  const modeObj=MODES.find(m=>m.id===mode);
+  const frameImg=getFrame();
+
+  return(
     <div style={{background:"#000",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:"'Sora',system-ui,sans-serif",color:"white"}}>
       {/* Header */}
       <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-        <button onClick={()=>{cancelAnimationFrame(animRef.current);streamRef.current?.getTracks().forEach(t=>t.stop());onBack();}}
+        <button onClick={()=>{cancelAnimationFrame(animRef.current);onBack();}}
           style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"7px 12px",borderRadius:"9px",cursor:"pointer",fontSize:"16px"}}>←</button>
-        <div style={{fontSize:"12px",fontWeight:"600",color:"white",opacity:0.8}}>
-          {MODES.find(m=>m.id===mode)?.icon} {MODES.find(m=>m.id===mode)?.title} · {ori.label}
+        <div style={{fontSize:"12px",fontWeight:"600",opacity:0.85}}>
+          {modeObj?.icon} {modeObj?.title} · {ori.label}
         </div>
         {phase==="adjust"
-          ? <button onClick={resetAdjust} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",padding:"5px 10px",borderRadius:"8px",cursor:"pointer",fontSize:"11px",fontWeight:"600"}}>Reset</button>
-          : phase==="recording"
-            ? <button onClick={flipCam} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"white",padding:"6px 10px",borderRadius:"8px",cursor:"pointer",fontSize:"16px"}}>🔄</button>
-            : <div style={{width:"50px"}}/>
+          ? <button onClick={reset} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",padding:"5px 10px",borderRadius:"8px",cursor:"pointer",fontSize:"11px",fontWeight:"600"}}>Reset</button>
+          : <div style={{width:"50px"}}/>
         }
       </div>
 
-      {/* Canvas area */}
-      <video ref={videoRef} style={{display:"none"}} muted playsInline autoPlay/>
-      {(phase==="adjust"||phase==="recording"||phase==="processing")&&(
+      {/* Canvas (only in adjust/saving) */}
+      {phase==="adjust"&&(
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",overflow:"hidden",position:"relative"}}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
-            style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",
-              border:phase==="adjust"?"1.5px solid rgba(232,98,42,0.5)":"none"}}/>
-          {phase==="adjust"&&<div style={{position:"absolute",bottom:"12px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.65)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.6)",whiteSpace:"nowrap"}}>
-            👆 Drag to move · Pinch to zoom
-          </div>}
-          {phase==="recording"&&<div style={{position:"absolute",top:"12px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.75)",padding:"5px 12px",borderRadius:"20px",display:"flex",alignItems:"center",gap:"6px"}}>
-            <div style={{width:"7px",height:"7px",borderRadius:"50%",background:"#EF4444"}}/>
-            <span style={{fontSize:"12px",fontWeight:"600"}}>{fmt(secs)}</span>
-          </div>}
-          {phase==="processing"&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"8px"}}>
-            <div style={{textAlign:"center"}}><div style={{fontSize:"28px"}}>⏳</div><div style={{fontSize:"12px",marginTop:"6px"}}>Processing...</div></div>
-          </div>}
+            style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:"1.5px solid rgba(232,98,42,0.4)"}}/>
+          <div style={{position:"absolute",bottom:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.6)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.55)",whiteSpace:"nowrap"}}>
+            👆 Drag · Pinch to zoom
+          </div>
+        </div>
+      )}
+
+      {/* Saving overlay */}
+      {saving&&(
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"12px"}}>
+          <canvas ref={canvasRef} width={FW} height={FH+STRIP} style={{display:"none"}}/>
+          <div style={{fontSize:"32px"}}>⏳</div>
+          <div style={{fontSize:"14px",color:"rgba(255,255,255,0.7)"}}>Saving video with frame...</div>
+          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.35)"}}>Video poora play hone par save hoga</div>
         </div>
       )}
 
       {/* Bottom controls */}
-      <div style={{padding:"12px 18px 32px",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px",flexShrink:0}}>
+      <div style={{padding:"12px 18px 32px",flexDirection:"column",alignItems:"center",gap:"10px",flexShrink:0,display:saving?"none":"flex"}}>
         {err&&<div style={{color:"#FCA5A5",fontSize:"11px",textAlign:"center",padding:"7px 12px",background:"rgba(239,68,68,0.1)",borderRadius:"8px",width:"100%"}}>{err}</div>}
 
-        {/* ── PICK phase ── */}
+        {/* PICK phase */}
         {phase==="pick"&&(
           <div style={{width:"100%",display:"flex",flexDirection:"column",gap:"10px"}}>
-            <div style={{textAlign:"center",marginBottom:"8px"}}>
-              <div style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",marginBottom:"4px"}}>Photo/Video lein ya choose karein</div>
-              <div style={{fontSize:"11px",color:"rgba(255,255,255,0.3)"}}>Native camera · Full quality · No zoom issues</div>
+            <div style={{textAlign:"center",marginBottom:"6px"}}>
+              <div style={{fontSize:"13px",color:"rgba(255,255,255,0.5)"}}>
+                {isPhoto?"Photo lein ya gallery se choose karein":"Video record karein ya gallery se choose karein"}
+              </div>
+              <div style={{fontSize:"11px",color:"rgba(255,255,255,0.25)",marginTop:"3px"}}>Native camera · Full quality · No zoom issues</div>
             </div>
-            {mode==="photo"
-              ? <button onClick={()=>nativeCamRef.current.click()}
-                  style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
-                  📸 Camera से Photo लें
-                </button>
-              : <button onClick={()=>startLiveRec()}
-                  style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
-                  🎥 Camera से Video Record करें
-                </button>
-            }
+            <button onClick={()=>nativeCamRef.current.click()}
+              style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
+              {isPhoto?"📸 Camera से Photo लें":"🎥 Camera से Video Record करें"}
+            </button>
             <button onClick={()=>galleryRef.current.click()}
               style={{width:"100%",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.7)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:"13px",padding:"14px",fontSize:"14px",fontWeight:"600",cursor:"pointer"}}>
               🖼 Gallery से चुनें
             </button>
-            <input ref={nativeCamRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleFilePick}/>
-            <input ref={galleryRef} type="file" accept={mode==="photo"?"image/*":"video/*"} style={{display:"none"}} onChange={handleFilePick}/>
+            <input ref={nativeCamRef} type="file" accept={acceptType} capture="environment" style={{display:"none"}} onChange={handleFile}/>
+            <input ref={galleryRef}   type="file" accept={acceptType} style={{display:"none"}} onChange={handleFile}/>
           </div>
         )}
 
-        {/* ── ADJUST phase ── */}
+        {/* ADJUST phase */}
         {phase==="adjust"&&(
           <div style={{width:"100%",display:"flex",flexDirection:"column",gap:"9px"}}>
-            {/* Zoom controls */}
             <div style={{display:"flex",alignItems:"center",gap:"8px",justifyContent:"center"}}>
               <button onClick={()=>zoomBy(-0.15)}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"20px",fontWeight:"300",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-              <div style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"20px",padding:"6px 16px",minWidth:"80px",textAlign:"center"}}>
-                <span style={{fontSize:"13px",fontWeight:"600",color:"#E8622A"}}>{Math.round(scale*100)}%</span>
+                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"22px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>−</button>
+              <div style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"20px",padding:"6px 18px",minWidth:"80px",textAlign:"center"}}>
+                <span style={{fontSize:"14px",fontWeight:"700",color:"#E8622A"}}>{Math.round(scale*100)}%</span>
               </div>
               <button onClick={()=>zoomBy(0.15)}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-              <button onClick={()=>galleryRef.current.click()}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.6)",fontSize:"16px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🖼</button>
+                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"22px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
+              <button onClick={()=>{setPhase("pick");mediaRef.current=null;}}
+                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.55)",fontSize:"14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔄</button>
             </div>
-            {/* Confirm */}
-            <button onClick={confirmCapture}
+            <button onClick={doSave}
               style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
-              {mediaRef.current&&(mediaRef.current.tagName==="VIDEO"||mediaRef.current.videoWidth>0)?"✓ Save Video with Frame →":"✓ This is Perfect — Save →"}
+              {mediaRef.current?.tagName==="VIDEO"?"✓ Save Video with Frame →":"✓ Save Photo with Frame →"}
             </button>
-            <input ref={galleryRef} type="file" accept={mode==="photo"?"image/*":"video/*"} style={{display:"none"}} onChange={handleFilePick}/>
-          </div>
-        )}
-
-        {/* ── RECORDING phase ── */}
-        {phase==="recording"&&(
-          <div style={{display:"flex",gap:"14px",alignItems:"center",justifyContent:"center",width:"100%"}}>
-            <div style={{width:"50px"}}/>
-            <button onClick={()=>{recRef.current?stopRec():startRec();}}
-              style={{width:"68px",height:"68px",borderRadius:"50%",background:recRef.current?"#EF4444":"#E8622A",border:"5px solid rgba(255,255,255,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(239,68,68,0.4)"}}>
-              {recRef.current
-                ? <div style={{width:"20px",height:"20px",borderRadius:"3px",background:"white"}}/>
-                : <div style={{width:"22px",height:"22px",borderRadius:"50%",background:"white"}}/>
-              }
-            </button>
-            <button onClick={flipCam}
-              style={{width:"50px",height:"50px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.18)",color:"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔄</button>
+            <input ref={galleryRef} type="file" accept={acceptType} style={{display:"none"}} onChange={handleFile}/>
           </div>
         )}
       </div>
