@@ -995,6 +995,7 @@ export default function App() {
   const [captured,setCaptured]=useState(null);
   const [msg]=useState(randQuote);
   const [community,setCommunity]=useState([]);
+  const [totalCount,setTotalCount]=useState(0);
   const [distStats,setDistStats]=useState({});
   const [loading,setLoading]=useState(true);
   const [joined,setJoined]=useState(false);
@@ -1029,10 +1030,20 @@ export default function App() {
   async function loadCommunity() {
     setLoading(true);
     try {
+      // Fetch entries (up to 2000)
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=100`,
+        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=2000`,
         { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`} }
       );
+      // Also fetch exact total count
+      const countRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/yoga_participation?select=id`,
+        { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"count=exact","Range-Unit":"items","Range":"0-0"} }
+      );
+      if(countRes.ok){
+        const total=parseInt(countRes.headers.get("Content-Range")?.split("/")?.[1]||"0");
+        if(total>0) setTotalCount(total);
+      }
       if(res.ok) {
         const data = await res.json();
         setCommunity(data);
@@ -1190,7 +1201,7 @@ export default function App() {
 
             {/* Stats row */}
             <div style={{display:"flex",gap:"10px",marginBottom:"32px"}}>
-              {[{v:community.length+"+",l:"Yogis",c:"#E8622A"},{v:"13",l:"Districts",c:"#10A87C"},{v:"15",l:"Frames",c:"#8B5CF6"}].map(s=>(
+              {[{v:(totalCount||community.length)+"+",l:"Yogis",c:"#E8622A"},{v:"13",l:"Districts",c:"#10A87C"},{v:"15",l:"Frames",c:"#8B5CF6"}].map(s=>(
                 <div key={s.l} style={{flex:1,background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"14px",padding:"14px 10px",textAlign:"center"}}>
                   <div style={{fontSize:"20px",fontWeight:"800",color:s.c}}>{s.v}</div>
                   <div style={{fontSize:"10px",color:"rgba(255,255,255,0.35)",marginTop:"3px"}}>{s.l}</div>
@@ -1220,7 +1231,7 @@ export default function App() {
                 <div className="tap" onClick={()=>setScreen("community")} style={{flex:1,background:"#13131E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"16px",padding:"16px",cursor:"pointer"}}>
                   <div style={{fontSize:"24px",marginBottom:"8px"}}>🗺️</div>
                   <div style={{fontWeight:"700",fontSize:"14px",color:"#fff",marginBottom:"3px"}}>District Wall</div>
-                  <div style={{color:"rgba(16,168,124,0.8)",fontSize:"11px",fontWeight:"600"}}>{community.length} entries</div>
+                  <div style={{color:"rgba(16,168,124,0.8)",fontSize:"11px",fontWeight:"600"}}>{(totalCount||community.length)} entries</div>
                 </div>
                 <div className="tap" onClick={()=>name?setScreen("challenge"):setScreen("onboard")} style={{flex:1,background:"#13131E",border:"1px solid rgba(139,92,246,0.25)",borderRadius:"16px",padding:"16px",cursor:"pointer"}}>
                   <div style={{fontSize:"24px",marginBottom:"8px"}}>🔥</div>
