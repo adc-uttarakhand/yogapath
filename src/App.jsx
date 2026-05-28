@@ -839,44 +839,41 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         "video/webm;codecs=vp8,opus",
         "video/webm"
       ].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-      // Configure video element
-      med.muted=false; med.volume=1; med.loop=false;
+      // Configure video — muted=false, volume=0 (NOT muted=true, Android silence fix)
+      med.muted=false; med.volume=0; med.loop=false;
       med.style.cssText="position:fixed;width:1px;height:1px;opacity:0.01;top:0;left:0;pointer-events:none;";
       document.body.appendChild(med);
       // Canvas video stream
       const canvasStream=canvasRef.current.captureStream(30);
       const outputStream=new MediaStream();
       canvasStream.getVideoTracks().forEach(t=>outputStream.addTrack(t));
-      // Audio extraction
-      let ac2=null;
+      // Audio: use captureStream() directly (no AudioContext)
       try{
-        ac2=new(window.AudioContext||window.webkitAudioContext)();
-        if(ac2.state==="suspended") await ac2.resume();
-        const asrc=ac2.createMediaElementSource(med);
-        const audioStreamDest=ac2.createMediaStreamDestination();
-        asrc.connect(audioStreamDest);
-        asrc.connect(ac2.destination);
-        audioStreamDest.stream.getAudioTracks().forEach(t=>outputStream.addTrack(t));
-      }catch(e){console.error("AudioContext failed:",e);}
+        const mediaStream=med.captureStream();
+        const audioTracks=mediaStream.getAudioTracks();
+        console.log("AUDIO TRACKS:",audioTracks.length);
+        audioTracks.forEach(t=>outputStream.addTrack(t));
+      }catch(e){console.error("captureStream audio failed:",e);}
       const chunks=[];
       const rec=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:2500000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
       rec.onstop=()=>{
         try{document.body.removeChild(med);}catch(e){}
-        try{ac2&&ac2.close();}catch(e){}
-        const bm=mime.split(";")[0];
-        const blob=new Blob(chunks,{type:bm});
+        // Use rec.mimeType for exact codec match
+        const blob=new Blob(chunks,{type:rec.mimeType});
         const url=URL.createObjectURL(blob);
         setSaving(false);
-        onCapture({type:"video",blob,url,mime:bm});
+        onCapture({type:"video",blob,url,mime:rec.mimeType});
       };
-      // Seek to start then sync start
+      // Seek to start
       med.currentTime=0;
       await new Promise(r=>{med.onseeked=()=>r();setTimeout(r,600);});
+      // Play FIRST, wait 300ms, THEN start recorder
+      try{await med.play();}catch(e){setErr("Play error: "+e.message);setSaving(false);try{document.body.removeChild(med);}catch(e2){}return;}
+      await new Promise(r=>setTimeout(r,300));
       rec.start(100);
-      try{await med.play();}catch(e){setErr("Play error: "+e.message);rec.stop();setSaving(false);return;}
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
-      setTimeout(()=>{if(rec.state==="recording")rec.stop();},(med.duration*1000)+1000||30000);
+      setTimeout(()=>{if(rec.state==="recording")rec.stop();},(med.duration*1000)+2000||30000);
     }
   }
 
