@@ -720,6 +720,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         nativeCamRef=useRef(null),galleryRef=useRef(null),
         sqImgRef=useRef(null),lsImgRef=useRef(null),ptImgRef=useRef(null),
         mediaRef=useRef(null),
+        originalFileRef=useRef(null),
         offsetRef=useRef({x:0,y:0}),scaleRef=useRef(1),
         touchRef=useRef(null),
         mimeRef=useRef("video/mp4");
@@ -728,6 +729,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   const [scale,setScale]=useState(1);
   const [offset,setOffset]=useState({x:0,y:0});
   const [saving,setSaving]=useState(false);
+  const [saveProgress,setSaveProgress]=useState(0);
   const [err,setErr]=useState(null);
 
   const isPhoto=mode==="photo";
@@ -775,6 +777,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       img.src=url;
     } else if(file.type.startsWith("video/")){
       mimeRef.current=file.type||"video/mp4";
+      originalFileRef.current=file;          // store original for lossless save
       const vid=document.createElement("video");
       vid.src=url;vid.muted=true;vid.loop=true;vid.playsInline=true;
       vid.onloadedmetadata=()=>{
@@ -821,59 +824,109 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
 
   // ── Save ──
+  // ── WebCodecs-based video encoding (H264+AAC = proper MP4 for WhatsApp) ──
+  async function encodeVideoWithFrame(origFile){
+    const {Muxer,ArrayBufferTarget}=await import("mp4-muxer");
+    const fi=getFrame();
+    // Decode audio from original file
+    const ab=await origFile.arrayBuffer();
+    const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const audioBuffer=await audioCtx.decodeAudioData(ab);
+    const W=FW, H=FH+STRIP;
+    // Muxer setup
+    const muxer=new Muxer({
+      target:new ArrayBufferTarget(),
+      video:{codec:"avc",width:W,height:H},
+      audio:{codec:"aac",sampleRate:audioBuffer.sampleRate,numberOfChannels:audioBuffer.numberOfChannels},
+      fastStart:"in-memory"
+    });
+    // Video encoder
+    const vEnc=new VideoEncoder({
+      output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),
+      error:e=>console.error("VE:",e)
+    });
+    const vcSupport=await VideoEncoder.isConfigSupported({codec:"avc1.42001f",width:W,height:H});
+    if(!vcSupport.supported) throw new Error("H264 not supported on this device");
+    vEnc.configure({codec:"avc1.42001f",width:W,height:H,bitrate:3000000,framerate:30});
+    // Audio encoder
+    const aEnc=new AudioEncoder({
+      output:(chunk,meta)=>muxer.addAudioChunk(chunk,meta),
+      error:e=>console.error("AE:",e)
+    });
+    aEnc.configure({codec:"mp4a.40.2",sampleRate:audioBuffer.sampleRate,numberOfChannels:audioBuffer.numberOfChannels,bitrate:128000});
+    // Offscreen canvas
+    const oCanvas=document.createElement("canvas");
+    oCanvas.width=W; oCanvas.height=H;
+    // Video element for playback
+    const vEl=document.createElement("video");
+    vEl.src=URL.createObjectURL(origFile); vEl.muted=true; vEl.playsInline=true;
+    await new Promise(r=>{vEl.onloadedmetadata=r;});
+    const duration=vEl.duration;
+    // Encode video frames using requestVideoFrameCallback
+    let frameIdx=0;
+    await new Promise((resolve,reject)=>{
+      const onFrame=async(now,metadata)=>{
+        try{
+          drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
+          const ts=Math.round(metadata.mediaTime*1000000);
+          const vf=new VideoFrame(oCanvas,{timestamp:ts});
+          vEnc.encode(vf,{keyFrame:frameIdx%60===0}); vf.close(); frameIdx++;
+          setSaveProgress(Math.min(80,Math.round((metadata.mediaTime/duration)*80)));
+          if(!vEl.ended) vEl.requestVideoFrameCallback(onFrame); else resolve();
+        }catch(e){reject(e);}
+      };
+      vEl.onended=resolve; vEl.onerror=reject;
+      vEl.play().then(()=>vEl.requestVideoFrameCallback(onFrame)).catch(reject);
+    });
+    setSaveProgress(88);
+    // Encode audio in chunks
+    const sr=audioBuffer.sampleRate, nc=audioBuffer.numberOfChannels, CHUNK=4096;
+    for(let i=0;i<audioBuffer.length;i+=CHUNK){
+      const frames=Math.min(CHUNK,audioBuffer.length-i);
+      const data=new Float32Array(frames*nc);
+      for(let c=0;c<nc;c++) data.set(audioBuffer.getChannelData(c).subarray(i,i+frames),c*frames);
+      const ad=new AudioData({format:"f32-planar",sampleRate:sr,numberOfFrames:frames,numberOfChannels:nc,timestamp:Math.round((i/sr)*1000000),data});
+      aEnc.encode(ad); ad.close();
+    }
+    setSaveProgress(96);
+    await vEnc.flush(); await aEnc.flush();
+    muxer.finalize(); await audioCtx.close();
+    setSaveProgress(100);
+    return new Blob([muxer.target.buffer],{type:"video/mp4"});
+  }
+
   async function doSave(){
     const med=mediaRef.current;
     if(!med){setErr("No media selected");return;}
     const isVid=med.tagName==="VIDEO";
     if(!isVid){
       const url=canvasRef.current.toDataURL("image/jpeg",0.94);
-      onCapture({type:"photo",url});
-    } else {
-      setSaving(true); setErr(null);
-      // WhatsApp-friendly codec priority
-      const mime=[
-        "video/mp4;codecs=h264,aac",
-        "video/mp4;codecs=h264,mp4a.40.2",
-        "video/mp4",
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm"
-      ].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-      // Configure video — muted=false, volume=0 (NOT muted=true, Android silence fix)
-      med.muted=false; med.volume=0; med.loop=false;
-      med.style.cssText="position:fixed;width:1px;height:1px;opacity:0.01;top:0;left:0;pointer-events:none;";
-      document.body.appendChild(med);
-      // Canvas video stream
-      const canvasStream=canvasRef.current.captureStream(30);
-      const outputStream=new MediaStream();
-      canvasStream.getVideoTracks().forEach(t=>outputStream.addTrack(t));
-      // Audio: use captureStream() directly (no AudioContext)
+      onCapture({type:"photo",url}); return;
+    }
+    const origFile=originalFileRef.current;
+    // Check WebCodecs support (Chrome 94+ on Android)
+    const hasWebCodecs=typeof VideoEncoder!=="undefined"
+      &&typeof AudioEncoder!=="undefined"
+      &&"requestVideoFrameCallback" in HTMLVideoElement.prototype;
+    if(hasWebCodecs&&origFile){
+      setSaving(true); setSaveProgress(0); setErr(null);
       try{
-        const mediaStream=med.captureStream();
-        const audioTracks=mediaStream.getAudioTracks();
-        console.log("AUDIO TRACKS:",audioTracks.length);
-        audioTracks.forEach(t=>outputStream.addTrack(t));
-      }catch(e){console.error("captureStream audio failed:",e);}
-      const chunks=[];
-      const rec=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:2500000});
-      rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{
-        try{document.body.removeChild(med);}catch(e){}
-        // Use rec.mimeType for exact codec match
-        const blob=new Blob(chunks,{type:rec.mimeType});
+        const blob=await encodeVideoWithFrame(origFile);
         const url=URL.createObjectURL(blob);
         setSaving(false);
-        onCapture({type:"video",blob,url,mime:rec.mimeType});
-      };
-      // Seek to start
-      med.currentTime=0;
-      await new Promise(r=>{med.onseeked=()=>r();setTimeout(r,600);});
-      // Play FIRST, wait 300ms, THEN start recorder
-      try{await med.play();}catch(e){setErr("Play error: "+e.message);setSaving(false);try{document.body.removeChild(med);}catch(e2){}return;}
-      await new Promise(r=>setTimeout(r,300));
-      rec.start(100);
-      med.onended=()=>{if(rec.state==="recording")rec.stop();};
-      setTimeout(()=>{if(rec.state==="recording")rec.stop();},(med.duration*1000)+2000||30000);
+        onCapture({type:"video",blob,url,mime:"video/mp4"});
+      }catch(e){
+        console.error("WebCodecs failed:",e); setSaving(false);
+        // Fallback: original file (audio intact, no frame burned)
+        const url=URL.createObjectURL(origFile);
+        onCapture({type:"video",blob:origFile,url,mime:origFile.type,isOriginal:true});
+      }
+    } else if(origFile){
+      // No WebCodecs support: original file (audio intact)
+      const url=URL.createObjectURL(origFile);
+      onCapture({type:"video",blob:origFile,url,mime:origFile.type,isOriginal:true});
+    } else {
+      setErr("No video file available. Please re-select.");
     }
   }
 
@@ -904,10 +957,14 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
             style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:saving?"1.5px solid rgba(16,168,124,0.4)":"1.5px solid rgba(232,98,42,0.4)"}}/>
-          {saving&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",borderRadius:"8px"}}>
-            <div style={{fontSize:"36px"}}>⏳</div>
-            <div style={{fontSize:"14px",fontWeight:"600",color:"white"}}>Video save हो रही है...</div>
-            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.45)"}}>Video पूरी play होने पर save होगी</div>
+          {saving&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"12px",borderRadius:"8px",padding:"20px"}}>
+            <div style={{fontSize:"36px"}}>⚙️</div>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"white"}}>Frame + Audio encode हो रहा है...</div>
+            <div style={{width:"100%",maxWidth:"240px",height:"6px",background:"rgba(255,255,255,0.15)",borderRadius:"3px",overflow:"hidden"}}>
+              <div style={{height:"100%",background:"#E8622A",borderRadius:"3px",width:`${saveProgress}%`,transition:"width 0.3s"}}/>
+            </div>
+            <div style={{fontSize:"12px",color:"#E8622A",fontWeight:"600"}}>{saveProgress}%</div>
+            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.4)",textAlign:"center"}}>H264+AAC MP4 बन रहा है — WhatsApp ready</div>
           </div>}
           {!saving&&<div style={{position:"absolute",bottom:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.6)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.55)",whiteSpace:"nowrap"}}>
             👆 Drag · Pinch to zoom
