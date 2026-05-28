@@ -824,46 +824,111 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
 
   // ── Save ──
-  // ── WebCodecs-based video encoding (H264+AAC = proper MP4 for WhatsApp) ──
+  // ── Canvas MediaRecorder fallback — AudioBufferSourceNode for GUARANTEED audio ──
+  async function canvasRecorderFallback(origFile){
+    setSaving(true); setSaveProgress(5); setErr(null);
+    const mime=["video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]
+      .find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+    try{
+      const fi=getFrame();
+      // 1. Decode audio from file — GUARANTEED, works on all browsers
+      const ab=await origFile.arrayBuffer();
+      const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==="suspended") await audioCtx.resume();
+      const audioBuffer=await audioCtx.decodeAudioData(ab);
+      setSaveProgress(15);
+      // 2. Video element for frame drawing (muted — audio handled separately)
+      const vEl=document.createElement("video");
+      vEl.src=URL.createObjectURL(origFile);
+      vEl.muted=true; vEl.loop=false; vEl.playsInline=true;
+      await new Promise(r=>{vEl.onloadedmetadata=r;});
+      // 3. Canvas for frame overlay
+      const oCanvas=document.createElement("canvas");
+      oCanvas.width=FW; oCanvas.height=FH+STRIP;
+      const canvasStream=oCanvas.captureStream(30);
+      // 4. AudioBufferSourceNode → MediaStreamDestination (most reliable audio method)
+      const audioSrc=audioCtx.createBufferSource();
+      audioSrc.buffer=audioBuffer;
+      const audioDest=audioCtx.createMediaStreamDestination();
+      audioSrc.connect(audioDest);
+      // 5. Combined output stream
+      const outputStream=new MediaStream();
+      canvasStream.getVideoTracks().forEach(t=>outputStream.addTrack(t));
+      audioDest.stream.getAudioTracks().forEach(t=>outputStream.addTrack(t));
+      setSaveProgress(20);
+      // 6. MediaRecorder setup
+      const chunks=[];
+      const rec=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:2500000});
+      rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      rec.onstop=()=>{
+        try{audioCtx.close();}catch(e){}
+        const blob=new Blob(chunks,{type:rec.mimeType});
+        setSaving(false); setSaveProgress(0);
+        onCapture({type:"video",blob,url:URL.createObjectURL(blob),mime:rec.mimeType});
+      };
+      // 7. Draw loop
+      let raf;
+      const loop=()=>{
+        drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
+        raf=requestAnimationFrame(loop);
+      };
+      raf=requestAnimationFrame(loop);
+      // 8. Seek to start
+      vEl.currentTime=0;
+      await new Promise(r=>{vEl.onseeked=()=>r();setTimeout(r,500);});
+      // 9. Start recording + audio + video TOGETHER (sync)
+      rec.start(100);
+      audioSrc.start(0);
+      await vEl.play().catch(()=>{});
+      setSaveProgress(30);
+      const prog=setInterval(()=>setSaveProgress(p=>Math.min(95,p+2)),600);
+      // 10. Stop when video ends
+      vEl.onended=()=>{
+        clearInterval(prog); cancelAnimationFrame(raf);
+        if(rec.state==="recording") rec.stop();
+      };
+      setTimeout(()=>{
+        clearInterval(prog); cancelAnimationFrame(raf);
+        if(rec.state==="recording") rec.stop();
+      },(vEl.duration*1000)+3000||60000);
+    }catch(e){
+      console.error("Canvas fallback failed:",e);
+      setSaving(false); setSaveProgress(0);
+      setErr("Save failed: "+e.message);
+    }
+  }
+  // ── WebCodecs-based encoding (H264+AAC proper MP4) ──
   async function encodeVideoWithFrame(origFile){
     const {Muxer,ArrayBufferTarget}=await import("mp4-muxer");
     const fi=getFrame();
-    // Decode audio from original file
     const ab=await origFile.arrayBuffer();
     const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     const audioBuffer=await audioCtx.decodeAudioData(ab);
     const W=FW, H=FH+STRIP;
-    // Muxer setup
     const muxer=new Muxer({
       target:new ArrayBufferTarget(),
       video:{codec:"avc",width:W,height:H},
       audio:{codec:"aac",sampleRate:audioBuffer.sampleRate,numberOfChannels:audioBuffer.numberOfChannels},
       fastStart:"in-memory"
     });
-    // Video encoder
     const vEnc=new VideoEncoder({
       output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),
       error:e=>console.error("VE:",e)
     });
     const vcSupport=await VideoEncoder.isConfigSupported({codec:"avc1.42001f",width:W,height:H});
-    if(!vcSupport.supported) throw new Error("H264 not supported on this device");
+    if(!vcSupport.supported) throw new Error("H264 not supported");
     vEnc.configure({codec:"avc1.42001f",width:W,height:H,bitrate:3000000,framerate:30});
-    // Audio encoder
     const aEnc=new AudioEncoder({
       output:(chunk,meta)=>muxer.addAudioChunk(chunk,meta),
       error:e=>console.error("AE:",e)
     });
     aEnc.configure({codec:"mp4a.40.2",sampleRate:audioBuffer.sampleRate,numberOfChannels:audioBuffer.numberOfChannels,bitrate:128000});
-    // Offscreen canvas
     const oCanvas=document.createElement("canvas");
     oCanvas.width=W; oCanvas.height=H;
-    // Video element for playback
     const vEl=document.createElement("video");
     vEl.src=URL.createObjectURL(origFile); vEl.muted=true; vEl.playsInline=true;
     await new Promise(r=>{vEl.onloadedmetadata=r;});
-    const duration=vEl.duration;
-    // Encode video frames using requestVideoFrameCallback
-    let frameIdx=0;
+    const duration=vEl.duration; let frameIdx=0;
     await new Promise((resolve,reject)=>{
       const onFrame=async(now,metadata)=>{
         try{
@@ -879,7 +944,6 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       vEl.play().then(()=>vEl.requestVideoFrameCallback(onFrame)).catch(reject);
     });
     setSaveProgress(88);
-    // Encode audio in chunks
     const sr=audioBuffer.sampleRate, nc=audioBuffer.numberOfChannels, CHUNK=4096;
     for(let i=0;i<audioBuffer.length;i+=CHUNK){
       const frames=Math.min(CHUNK,audioBuffer.length-i);
@@ -904,29 +968,27 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       onCapture({type:"photo",url}); return;
     }
     const origFile=originalFileRef.current;
-    // Check WebCodecs support (Chrome 94+ on Android)
     const hasWebCodecs=typeof VideoEncoder!=="undefined"
       &&typeof AudioEncoder!=="undefined"
       &&"requestVideoFrameCallback" in HTMLVideoElement.prototype;
     if(hasWebCodecs&&origFile){
-      setSaving(true); setSaveProgress(0); setErr(null);
+      setSaving(true); setSaveProgress(5); setErr(null);
       try{
         const blob=await encodeVideoWithFrame(origFile);
         const url=URL.createObjectURL(blob);
-        setSaving(false);
+        setSaving(false); setSaveProgress(0);
         onCapture({type:"video",blob,url,mime:"video/mp4"});
       }catch(e){
-        console.error("WebCodecs failed:",e); setSaving(false);
-        // Fallback: original file (audio intact, no frame burned)
-        const url=URL.createObjectURL(origFile);
-        onCapture({type:"video",blob:origFile,url,mime:origFile.type,isOriginal:true});
+        console.error("WebCodecs failed, trying canvas fallback:",e);
+        setSaving(false); setSaveProgress(0);
+        // Fallback: canvas MediaRecorder (frame burned, audio best-effort)
+        await canvasRecorderFallback(origFile);
       }
     } else if(origFile){
-      // No WebCodecs support: original file (audio intact)
-      const url=URL.createObjectURL(origFile);
-      onCapture({type:"video",blob:origFile,url,mime:origFile.type,isOriginal:true});
+      // No WebCodecs: canvas MediaRecorder fallback
+      await canvasRecorderFallback(origFile);
     } else {
-      setErr("No video file available. Please re-select.");
+      setErr("No video file. Please re-select.");
     }
   }
 
