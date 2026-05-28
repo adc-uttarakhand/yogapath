@@ -1037,29 +1037,43 @@ export default function App() {
   async function loadCommunity() {
     setLoading(true);
     try {
-      // Fetch entries (up to 2000)
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=10000`,
-        { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Range-Unit":"items","Range":"0-9999"} }
-      );
-      // Also fetch exact total count
+      // ── Step 1: Get exact total count ──
       const countRes = await fetch(
         `${SUPABASE_URL}/rest/v1/yoga_participation?select=id`,
         { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"count=exact","Range-Unit":"items","Range":"0-0"} }
       );
+      let total = 0;
       if(countRes.ok){
-        const total=parseInt(countRes.headers.get("Content-Range")?.split("/")?.[1]||"0");
+        total = parseInt(countRes.headers.get("Content-Range")?.split("/")?.[1]||"0");
         if(total>0) setTotalCount(total);
       }
-      if(res.ok) {
-        const data = await res.json();
-        setCommunity(data);
-        // Build distStats from fetched data
+
+      // ── Step 2: Paginate in batches of 1000 (Supabase server limit) ──
+      const BATCH = 1000;
+      const allData = [];
+      let offset = 0;
+      while(true){
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc`,
+          { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Range-Unit":"items","Range":`${offset}-${offset+BATCH-1}`} }
+        );
+        if(!res.ok) break;
+        const batch = await res.json();
+        if(!Array.isArray(batch)||batch.length===0) break;
+        allData.push(...batch);
+        if(batch.length < BATCH) break;   // last page
+        offset += BATCH;
+        if(offset >= 20000) break;         // safety cap
+      }
+
+      if(allData.length > 0){
+        setCommunity(allData);
+        if(allData.length > total) setTotalCount(allData.length);
         const dc={};
-        data.forEach(e=>{ if(e.district) dc[e.district]=(dc[e.district]||0)+1; });
+        allData.forEach(e=>{ if(e.district) dc[e.district]=(dc[e.district]||0)+1; });
         setDistStats(dc);
       }
-    } catch(e) { console.error('Supabase fetch failed:',e); }
+    } catch(e){ console.error('Supabase fetch failed:',e); }
     setLoading(false);
   }
 
