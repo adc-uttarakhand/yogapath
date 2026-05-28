@@ -829,32 +829,37 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       const url=canvasRef.current.toDataURL("image/jpeg",0.94);
       onCapture({type:"photo",url});
     } else {
-      setSaving(true);
+      setSaving(true); setErr(null);
+      // WhatsApp-friendly codec priority
       const mime=[
         "video/mp4;codecs=h264,aac",
-        "video/mp4;codecs=h264",
+        "video/mp4;codecs=h264,mp4a.40.2",
         "video/mp4",
         "video/webm;codecs=vp9,opus",
         "video/webm;codecs=vp8,opus",
-        "video/webm;codecs=vp9",
-        "video/webm;codecs=vp8",
         "video/webm"
       ].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      // Configure video element
       med.muted=false; med.volume=1; med.loop=false;
       med.style.cssText="position:fixed;width:1px;height:1px;opacity:0.01;top:0;left:0;pointer-events:none;";
       document.body.appendChild(med);
-      const cs=canvasRef.current.captureStream(30);
+      // Canvas video stream
+      const canvasStream=canvasRef.current.captureStream(30);
+      const outputStream=new MediaStream();
+      canvasStream.getVideoTracks().forEach(t=>outputStream.addTrack(t));
+      // Audio extraction
       let ac2=null;
       try{
         ac2=new(window.AudioContext||window.webkitAudioContext)();
         if(ac2.state==="suspended") await ac2.resume();
         const asrc=ac2.createMediaElementSource(med);
-        const adst=ac2.createMediaStreamDestination();
-        asrc.connect(adst);
-        adst.stream.getAudioTracks().forEach(t=>cs.addTrack(t));
-      }catch(e){}
+        const audioStreamDest=ac2.createMediaStreamDestination();
+        asrc.connect(audioStreamDest);
+        asrc.connect(ac2.destination);
+        audioStreamDest.stream.getAudioTracks().forEach(t=>outputStream.addTrack(t));
+      }catch(e){console.error("AudioContext failed:",e);}
       const chunks=[];
-      const rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:3000000});
+      const rec=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:2500000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
       rec.onstop=()=>{
         try{document.body.removeChild(med);}catch(e){}
@@ -865,12 +870,14 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         setSaving(false);
         onCapture({type:"video",blob,url,mime:bm});
       };
+      // Seek to start then sync start
       med.currentTime=0;
-      await new Promise(r=>{med.onseeked=()=>r();setTimeout(r,500);});
+      await new Promise(r=>{med.onseeked=()=>r();setTimeout(r,600);});
       rec.start(100);
-      await med.play().catch(e=>setErr("Play error: "+e.message));
+      try{await med.play();}catch(e){setErr("Play error: "+e.message);rec.stop();setSaving(false);return;}
       med.onended=()=>{if(rec.state==="recording")rec.stop();};
-      setTimeout(()=>{if(rec.state==="recording")rec.stop();},300000);  }
+      setTimeout(()=>{if(rec.state==="recording")rec.stop();},(med.duration*1000)+1000||30000);
+    }
   }
 
   useEffect(()=>()=>{cancelAnimationFrame(animRef.current);},[]);
@@ -1032,8 +1039,8 @@ export default function App() {
     try {
       // Fetch entries (up to 2000)
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=2000`,
-        { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`} }
+        `${SUPABASE_URL}/rest/v1/yoga_participation?select=*&order=created_at.desc&limit=10000`,
+        { headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Range-Unit":"items","Range":"0-9999"} }
       );
       // Also fetch exact total count
       const countRes = await fetch(
