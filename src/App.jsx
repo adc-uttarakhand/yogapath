@@ -721,6 +721,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         sqImgRef=useRef(null),lsImgRef=useRef(null),ptImgRef=useRef(null),
         mediaRef=useRef(null),
         originalFileRef=useRef(null),
+        ffmpegRef=useRef(null),
         offsetRef=useRef({x:0,y:0}),scaleRef=useRef(1),
         touchRef=useRef(null),
         mimeRef=useRef("video/mp4");
@@ -730,6 +731,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   const [offset,setOffset]=useState({x:0,y:0});
   const [saving,setSaving]=useState(false);
   const [saveProgress,setSaveProgress]=useState(0);
+  const [saveStatus,setSaveStatus]=useState("");
   const [err,setErr]=useState(null);
 
   const isPhoto=mode==="photo";
@@ -824,77 +826,109 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
 
   // ── Save ──
-  // ── Canvas MediaRecorder fallback — AudioBufferSourceNode for GUARANTEED audio ──
-  async function canvasRecorderFallback(origFile){
-    setSaving(true); setSaveProgress(5); setErr(null);
-    const mime=["video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]
-      .find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
-    try{
+  // ── Load FFmpeg singleton ──
+  async function loadFFmpeg(onProg){
+    if(ffmpegRef.current) return ffmpegRef.current;
+    setSaveStatus("FFmpeg load हो रहा है... (पहली बार ~30 seconds)");
+    const {FFmpeg}=await import("@ffmpeg/ffmpeg");
+    const {toBlobURL}=await import("@ffmpeg/util");
+    const ff=new FFmpeg();
+    if(onProg) ff.on("progress",({progress})=>onProg(progress));
+    const base="https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+    await ff.load({
+      coreURL:await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript"),
+      wasmURL:await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm"),
+    });
+    ffmpegRef.current=ff;
+    return ff;
+  }
+
+  // ── Canvas record (video only, no audio) ──
+  async function recordCanvasVideo(origFile){
+    return new Promise(async(resolve,reject)=>{
       const fi=getFrame();
-      // 1. Decode audio from file — GUARANTEED, works on all browsers
-      const ab=await origFile.arrayBuffer();
-      const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-      if(audioCtx.state==="suspended") await audioCtx.resume();
-      const audioBuffer=await audioCtx.decodeAudioData(ab);
-      setSaveProgress(15);
-      // 2. Video element for frame drawing (muted — audio handled separately)
       const vEl=document.createElement("video");
       vEl.src=URL.createObjectURL(origFile);
       vEl.muted=true; vEl.loop=false; vEl.playsInline=true;
       await new Promise(r=>{vEl.onloadedmetadata=r;});
-      // 3. Canvas for frame overlay
       const oCanvas=document.createElement("canvas");
       oCanvas.width=FW; oCanvas.height=FH+STRIP;
-      const canvasStream=oCanvas.captureStream(30);
-      // 4. AudioBufferSourceNode → MediaStreamDestination (most reliable audio method)
-      const audioSrc=audioCtx.createBufferSource();
-      audioSrc.buffer=audioBuffer;
-      const audioDest=audioCtx.createMediaStreamDestination();
-      audioSrc.connect(audioDest);
-      // 5. Combined output stream
-      const outputStream=new MediaStream();
-      canvasStream.getVideoTracks().forEach(t=>outputStream.addTrack(t));
-      audioDest.stream.getAudioTracks().forEach(t=>outputStream.addTrack(t));
-      setSaveProgress(20);
-      // 6. MediaRecorder setup
-      const chunks=[];
-      const rec=new MediaRecorder(outputStream,{mimeType:mime,videoBitsPerSecond:2500000});
+      const stream=oCanvas.captureStream(30);
+      const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"]
+        .find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch{return false;}})||"video/webm";
+      const chunks=[]; const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000});
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-      rec.onstop=()=>{
-        try{audioCtx.close();}catch(e){}
-        const blob=new Blob(chunks,{type:rec.mimeType});
-        setSaving(false); setSaveProgress(0);
-        onCapture({type:"video",blob,url:URL.createObjectURL(blob),mime:rec.mimeType});
-      };
-      // 7. Draw loop
+      rec.onstop=()=>resolve(new Blob(chunks,{type:rec.mimeType}));
       let raf;
       const loop=()=>{
         drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
         raf=requestAnimationFrame(loop);
+        if(vEl.duration>0) setSaveProgress(5+Math.round((vEl.currentTime/vEl.duration)*40));
       };
       raf=requestAnimationFrame(loop);
-      // 8. Seek to start
       vEl.currentTime=0;
       await new Promise(r=>{vEl.onseeked=()=>r();setTimeout(r,500);});
-      // 9. Start recording + audio + video TOGETHER (sync)
       rec.start(100);
-      audioSrc.start(0);
-      await vEl.play().catch(()=>{});
-      setSaveProgress(30);
-      const prog=setInterval(()=>setSaveProgress(p=>Math.min(95,p+2)),600);
-      // 10. Stop when video ends
-      vEl.onended=()=>{
-        clearInterval(prog); cancelAnimationFrame(raf);
-        if(rec.state==="recording") rec.stop();
-      };
-      setTimeout(()=>{
-        clearInterval(prog); cancelAnimationFrame(raf);
-        if(rec.state==="recording") rec.stop();
-      },(vEl.duration*1000)+3000||60000);
+      await vEl.play().catch(reject);
+      vEl.onended=()=>{cancelAnimationFrame(raf);if(rec.state==="recording")rec.stop();};
+      setTimeout(()=>{cancelAnimationFrame(raf);if(rec.state==="recording")rec.stop();},(vEl.duration*1000)+3000||60000);
+    });
+  }
+
+  // ── FFmpeg: mux canvas video + original audio → MP4 ──
+  async function canvasRecorderFallback(origFile){
+    setSaving(true); setSaveProgress(2); setErr(null);
+    try{
+      // Phase 1: Record canvas (frame burned in, video only)
+      setSaveStatus("Frame video record हो रही है...");
+      const canvasBlob=await recordCanvasVideo(origFile);
+      setSaveProgress(48); setSaveStatus("FFmpeg से audio+video merge हो रहा है...");
+
+      // Phase 2: Load FFmpeg
+      const ff=await loadFFmpeg(p=>setSaveProgress(48+Math.round(p*5)));
+      setSaveProgress(55);
+
+      // Phase 3: Write files to FFmpeg virtual FS
+      const {fetchFile}=await import("@ffmpeg/util");
+      await ff.writeFile("canvas.webm",await fetchFile(canvasBlob));
+      await ff.writeFile("orig.mp4",await fetchFile(origFile));
+      setSaveProgress(60); setSaveStatus("MP4 encode हो रहा है...");
+
+      // Register progress for encoding phase
+      const onFFProg=({progress})=>setSaveProgress(60+Math.round(progress*35));
+      ff.on("progress",onFFProg);
+
+      // Phase 4: Mux — canvas video + ORIGINAL audio (copied, not re-encoded)
+      await ff.exec([
+        "-i","canvas.webm",
+        "-i","orig.mp4",
+        "-c:v","libx264","-preset","ultrafast","-crf","23",
+        "-map","0:v:0",
+        "-map","1:a:0",
+        "-c:a","copy",
+        "-shortest",
+        "-movflags","+faststart",
+        "output.mp4"
+      ]);
+
+      ff.off("progress",onFFProg);
+      setSaveProgress(97);
+
+      // Phase 5: Read output & cleanup
+      const data=await ff.readFile("output.mp4");
+      await ff.deleteFile("canvas.webm").catch(()=>{});
+      await ff.deleteFile("orig.mp4").catch(()=>{});
+      await ff.deleteFile("output.mp4").catch(()=>{});
+
+      const blob=new Blob([data.buffer],{type:"video/mp4"});
+      const url=URL.createObjectURL(blob);
+      setSaveProgress(100); setSaveStatus(""); setSaving(false);
+      onCapture({type:"video",blob,url,mime:"video/mp4"});
+
     }catch(e){
-      console.error("Canvas fallback failed:",e);
-      setSaving(false); setSaveProgress(0);
-      setErr("Save failed: "+e.message);
+      console.error("FFmpeg mux failed:",e);
+      setSaving(false); setSaveProgress(0); setSaveStatus("");
+      setErr("Save failed: "+e.message+". Please try again.");
     }
   }
   // ── WebCodecs-based encoding (H264+AAC proper MP4) ──
@@ -1019,14 +1053,14 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
             style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:saving?"1.5px solid rgba(16,168,124,0.4)":"1.5px solid rgba(232,98,42,0.4)"}}/>
-          {saving&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"12px",borderRadius:"8px",padding:"20px"}}>
+          {saving&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"12px",borderRadius:"8px",padding:"20px",textAlign:"center"}}>
             <div style={{fontSize:"36px"}}>⚙️</div>
-            <div style={{fontSize:"14px",fontWeight:"700",color:"white"}}>Frame + Audio encode हो रहा है...</div>
-            <div style={{width:"100%",maxWidth:"240px",height:"6px",background:"rgba(255,255,255,0.15)",borderRadius:"3px",overflow:"hidden"}}>
-              <div style={{height:"100%",background:"#E8622A",borderRadius:"3px",width:`${saveProgress}%`,transition:"width 0.3s"}}/>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"white"}}>{saveStatus||"Processing..."}</div>
+            <div style={{width:"100%",maxWidth:"240px",height:"8px",background:"rgba(255,255,255,0.12)",borderRadius:"4px",overflow:"hidden"}}>
+              <div style={{height:"100%",background:"linear-gradient(90deg,#E8622A,#10A87C)",borderRadius:"4px",width:`${saveProgress}%`,transition:"width 0.4s"}}/>
             </div>
-            <div style={{fontSize:"12px",color:"#E8622A",fontWeight:"600"}}>{saveProgress}%</div>
-            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.4)",textAlign:"center"}}>H264+AAC MP4 बन रहा है — WhatsApp ready</div>
+            <div style={{fontSize:"13px",color:"#E8622A",fontWeight:"700"}}>{saveProgress}%</div>
+            <div style={{fontSize:"10px",color:"rgba(255,255,255,0.35)"}}>Frame + Original Audio → WhatsApp ready MP4</div>
           </div>}
           {!saving&&<div style={{position:"absolute",bottom:"10px",left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.6)",padding:"4px 14px",borderRadius:"20px",fontSize:"10px",color:"rgba(255,255,255,0.55)",whiteSpace:"nowrap"}}>
             👆 Drag · Pinch to zoom
