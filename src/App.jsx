@@ -697,7 +697,7 @@ function drawStrip(ctx,FW,FH,STRIP,p){
   ctx.textBaseline="alphabetic";
 }
 
-function drawFrameAdjust(canvas,media,frameImg,FW,FH,STRIP,off,sc,p){
+function drawFrameAdjust(canvas,media,frameImg,FW,FH,STRIP,off,sc,p,rot){
   const ctx=canvas.getContext("2d");
   if(canvas.width!==FW)canvas.width=FW;
   if(canvas.height!==FH+STRIP)canvas.height=FH+STRIP;
@@ -706,9 +706,13 @@ function drawFrameAdjust(canvas,media,frameImg,FW,FH,STRIP,off,sc,p){
     const pw=media.naturalWidth||media.videoWidth||FW;
     const ph=media.naturalHeight||media.videoHeight||FH;
     if(pw&&ph){
-      const base=Math.min(FW/pw,FH/ph);
-      const dw=pw*base*sc,dh=ph*base*sc;
-      ctx.drawImage(media,(FW-dw)/2+off.x,(FH-dh)/2+off.y,dw,dh);
+      ctx.save();
+      ctx.translate(FW/2+off.x,FH/2+off.y);
+      if(rot) ctx.rotate((rot*Math.PI)/180);
+      ctx.scale(sc,sc);
+      const base=(rot===90||rot===270)?Math.min(FH/pw,FW/ph):Math.min(FW/pw,FH/ph);
+      ctx.drawImage(media,-pw*base/2,-ph*base/2,pw*base,ph*base);
+      ctx.restore();
     }
   }
   if(frameImg)ctx.drawImage(frameImg,0,0,FW,FH);
@@ -727,6 +731,8 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
         mimeRef=useRef("video/mp4");
 
   const [phase,setPhase]=useState("pick");
+  const [rotation,setRotation]=useState(0);
+  const rotationRef=useRef(0);
   const [scale,setScale]=useState(1);
   const [offset,setOffset]=useState({x:0,y:0});
   const [saving,setSaving]=useState(false);
@@ -756,7 +762,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
     let raf;
     const loop=()=>{
       if(canvasRef.current&&mediaRef.current)
-        drawFrameAdjust(canvasRef.current,mediaRef.current,getFrame(),FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
+        drawFrameAdjust(canvasRef.current,mediaRef.current,getFrame(),FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode},rotationRef.current);
       raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
@@ -823,7 +829,9 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
   function onTouchEnd(){touchRef.current=null;setScale(scaleRef.current);setOffset({...offsetRef.current});}
 
   function zoomBy(d){const s=Math.max(0.2,Math.min(6,scaleRef.current+d));scaleRef.current=s;setScale(s);}
-  function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;setOffset({x:0,y:0});setScale(1);}
+  function moveBy(dx,dy){const step=40;offsetRef.current={x:offsetRef.current.x+dx*step,y:offsetRef.current.y+dy*step};setOffset({...offsetRef.current});}
+  function rotateCW(){const r=(rotationRef.current+90)%360;rotationRef.current=r;setRotation(r);offsetRef.current={x:0,y:0};setOffset({x:0,y:0});}
+  function reset(){offsetRef.current={x:0,y:0};scaleRef.current=1;rotationRef.current=0;setOffset({x:0,y:0});setScale(1);setRotation(0);}
 
   // ── Save ──
   // ── Load FFmpeg singleton ──
@@ -861,7 +869,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
       rec.onstop=()=>resolve(new Blob(chunks,{type:rec.mimeType}));
       let raf;
       const loop=()=>{
-        drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
+        drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode},rotationRef.current);
         raf=requestAnimationFrame(loop);
         if(vEl.duration>0) setSaveProgress(5+Math.round((vEl.currentTime/vEl.duration)*40));
       };
@@ -966,7 +974,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
     await new Promise((resolve,reject)=>{
       const onFrame=async(now,metadata)=>{
         try{
-          drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode});
+          drawFrameAdjust(oCanvas,vEl,fi,FW,FH,STRIP,offsetRef.current,scaleRef.current,{name,role,district,asana,mode},rotationRef.current);
           const ts=Math.round(metadata.mediaTime*1000000);
           const vf=new VideoFrame(oCanvas,{timestamp:ts});
           vEnc.encode(vf,{keyFrame:frameIdx%60===0}); vf.close(); frameIdx++;
@@ -1049,7 +1057,7 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
 
       {/* Canvas — visible in adjust AND while saving */}
       {(phase==="adjust"||saving)&&(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",overflow:"hidden",position:"relative"}}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",overflow:"hidden",position:"relative",touchAction:"none"}}
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <canvas ref={canvasRef} width={FW} height={FH+STRIP}
             style={{width:"100%",maxHeight:"calc(100vh - 200px)",objectFit:"contain",borderRadius:"8px",border:saving?"1.5px solid rgba(16,168,124,0.4)":"1.5px solid rgba(232,98,42,0.4)"}}/>
@@ -1098,17 +1106,34 @@ function CameraScreen({mode,asana,name,district,role,msg,bgStyle,orientation,sqF
 
         {/* ADJUST phase */}
         {phase==="adjust"&&(
-          <div style={{width:"100%",display:"flex",flexDirection:"column",gap:"9px"}}>
+          <div style={{width:"100%",display:"flex",flexDirection:"column",gap:"8px"}}>
+            {/* Row 1: Zoom + Rotate */}
             <div style={{display:"flex",alignItems:"center",gap:"8px",justifyContent:"center"}}>
-              <button onClick={()=>zoomBy(-0.15)}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"22px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>−</button>
-              <div style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"20px",padding:"6px 18px",minWidth:"80px",textAlign:"center"}}>
-                <span style={{fontSize:"14px",fontWeight:"700",color:"#E8622A"}}>{Math.round(scale*100)}%</span>
+              <button onClick={()=>zoomBy(-0.15)} title="Zoom Out"
+                style={{width:"40px",height:"40px",borderRadius:"10px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+              <div style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"10px",padding:"6px 14px",minWidth:"72px",textAlign:"center"}}>
+                <span style={{fontSize:"13px",fontWeight:"700",color:"#E8622A"}}>{Math.round(scale*100)}%</span>
               </div>
-              <button onClick={()=>zoomBy(0.15)}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"white",fontSize:"22px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
-              <button onClick={()=>{setPhase("pick");mediaRef.current=null;}}
-                style={{width:"40px",height:"40px",borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.55)",fontSize:"14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🔄</button>
+              <button onClick={()=>zoomBy(0.15)} title="Zoom In"
+                style={{width:"40px",height:"40px",borderRadius:"10px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"white",fontSize:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              <button onClick={rotateCW} title="Rotate 90°"
+                style={{width:"40px",height:"40px",borderRadius:"10px",background:rotation!==0?"rgba(232,98,42,0.2)":"rgba(255,255,255,0.08)",border:`1px solid ${rotation!==0?"#E8622A":"rgba(255,255,255,0.15)"}`,color:rotation!==0?"#E8622A":"white",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>↻</button>
+              <button onClick={reset} title="Reset"
+                style={{width:"40px",height:"40px",borderRadius:"10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.5)",fontSize:"13px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>↺</button>
+            </div>
+            {/* Row 2: D-Pad */}
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"4px"}}>
+              <button onClick={()=>moveBy(0,-1)}
+                style={{width:"42px",height:"36px",borderRadius:"9px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",color:"white",fontSize:"16px",cursor:"pointer"}}>▲</button>
+              <div style={{display:"flex",gap:"4px",alignItems:"center"}}>
+                <button onClick={()=>moveBy(-1,0)}
+                  style={{width:"42px",height:"36px",borderRadius:"9px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",color:"white",fontSize:"16px",cursor:"pointer"}}>◀</button>
+                <div style={{width:"42px",height:"36px",borderRadius:"9px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",color:"rgba(255,255,255,0.2)"}}>↕</div>
+                <button onClick={()=>moveBy(1,0)}
+                  style={{width:"42px",height:"36px",borderRadius:"9px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",color:"white",fontSize:"16px",cursor:"pointer"}}>▶</button>
+              </div>
+              <button onClick={()=>moveBy(0,1)}
+                style={{width:"42px",height:"36px",borderRadius:"9px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",color:"white",fontSize:"16px",cursor:"pointer"}}>▼</button>
             </div>
             <button onClick={doSave}
               style={{width:"100%",background:"#E8622A",color:"white",border:"none",borderRadius:"13px",padding:"16px",fontSize:"15px",fontWeight:"700",cursor:"pointer",boxShadow:"0 6px 20px rgba(232,98,42,0.35)"}}>
